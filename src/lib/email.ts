@@ -1,12 +1,19 @@
 import nodemailer from "nodemailer";
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+let transporter: nodemailer.Transporter | null = null;
+
+function getTransporter() {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+  }
+  return transporter;
+}
 
 export interface EmailOptions {
   to: string;
@@ -16,7 +23,8 @@ export interface EmailOptions {
 
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    await transporter.sendMail({
+    const t = getTransporter();
+    await t.sendMail({
       from: `"EarnCoin" <${process.env.EMAIL_USER}>`,
       to: options.to,
       subject: options.subject,
