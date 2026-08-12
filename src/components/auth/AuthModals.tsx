@@ -28,7 +28,7 @@ const countries = [
 ];
 
 export function AuthModals() {
-  const { authModal, closeAuth, openAuth, register, login, verifyOtp, forgotPassword } = useStore();
+  const { authModal, closeAuth, openAuth, register, login, verifyOtp, forgotPassword, setView } = useStore();
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -89,10 +89,14 @@ export function AuthModals() {
       } else {
         // Also call the store login for local state
         const r = login(loginEmail, loginPwd);
-        if (r.ok) toast.success("Logged in successfully!");
-        else {
+        if (r.ok) {
+          toast.success("Logged in successfully!");
+          setView("dashboard");
+          closeAuth();
+        } else {
           // Fallback: sync user from API response
           toast.success("Logged in successfully!");
+          setView("dashboard");
           closeAuth();
         }
       }
@@ -101,7 +105,11 @@ export function AuthModals() {
       // Fallback to local store login
       const r = login(loginEmail, loginPwd);
       if (!r.ok) setError(r.message);
-      else toast.success(r.message);
+      else {
+        toast.success(r.message);
+        setView("dashboard");
+        closeAuth();
+      }
     }
   };
 

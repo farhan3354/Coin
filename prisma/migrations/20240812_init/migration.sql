@@ -1,0 +1,2 @@
+-- Baseline migration for existing Supabase schema
+-- No schema changes are applied here; this file allows Prisma to mark the current DB state as migrated.
