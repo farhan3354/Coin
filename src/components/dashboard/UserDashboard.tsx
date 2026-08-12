@@ -129,7 +129,7 @@ export function UserDashboard() {
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 pt-2">
               <div className="text-center p-2 sm:p-3 rounded-lg bg-muted/50">
                 <p className="text-xl sm:text-2xl font-bold">{user.totalReferrals}</p>
                 <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Total Referrals</p>
