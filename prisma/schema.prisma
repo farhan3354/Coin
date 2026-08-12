@@ -1,0 +1,291 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                   String       @id @default(cuid())
+  fullName             String
+  username             String       @unique
+  email                String       @unique
+  password             String
+  country              String
+  role                 String       @default("user")
+  referralCode         String       @unique
+  referredBy           String?
+  points               Int          @default(0)
+  dollarBalance        Float        @default(0)
+  emailVerified        Boolean      @default(false)
+  deviceFingerprint    String
+  browserInfo          String       @default("")
+  ipAddress            String       @default("")
+  createdAt            DateTime     @default(now())
+  lastLogin            DateTime?
+  status               String       @default("active")
+  avatarColor          String       @default("#FF8C00")
+  totalReferrals       Int          @default(0)
+  activeReferrals      Int          @default(0)
+  roomLevel            Int          @default(1)
+  roomXP               Int          @default(0)
+  isOfficialLink       Boolean      @default(false)
+  officialLinkLabel    String?
+  emailSubscribed      Boolean      @default(true)
+  notifPrefWithdrawal  Boolean      @default(true)
+  notifPrefReferral    Boolean      @default(true)
+  notifPrefEvent       Boolean      @default(true)
+  notifPrefAnnouncement Boolean     @default(true)
+  notifPrefNewsletter  Boolean      @default(true)
+  browserNotifications Boolean      @default(true)
+
+  withdrawals          Withdrawal[]
+  coinHistory          CoinHistory[]
+  notifications        Notification[]
+  videoWatches         VideoWatch[]
+  gameResults          GameResult[]
+  eventParticipants    EventParticipant[]
+  roomParticipants     RoomParticipant[]
+  campaigns            BusinessCampaign[]
+  passwordResets       PasswordReset[]
+  emailVerifications   EmailVerification[]
+}
+
+model Video {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  url           String
+  platform      String
+  embedUrl      String   @default("")
+  thumbnail     String   @default("")
+  rewardPoints  Int      @default(10)
+  watchDurationSec Int   @default(30)
+  category      String   @default("")
+  status        String   @default("active")
+  totalViews    Int      @default(0)
+  createdAt     DateTime @default(now())
+  addedBy       String   @default("admin")
+
+  watches       VideoWatch[]
+}
+
+model Task {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  type          String
+  rewardPoints  Int      @default(10)
+  durationMin   Int      @default(1)
+  link          String   @default("")
+  availability  Int      @default(1000)
+  completed     Int      @default(0)
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
+}
+
+model Event {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  type          String
+  rewardPoints  Int      @default(200)
+  rules         String   @default("[]")
+  startTime     DateTime
+  endTime       DateTime
+  status        String   @default("upcoming")
+  createdAt     DateTime @default(now())
+
+  participants  EventParticipant[]
+}
+
+model EventParticipant {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String
+  score     Int      @default(0)
+  joinedAt  DateTime @default(now())
+
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+model Room {
+  id            String   @id @default(cuid())
+  name          String
+  description   String
+  level         Int      @default(1)
+  seats         Int      @default(5)
+  entryPoints   Int      @default(0)
+  entryCost     Int      @default(0)
+  rewardPoints  Int      @default(100)
+  startTime     DateTime
+  endTime       DateTime
+  status        String   @default("open")
+  createdAt     DateTime @default(now())
+
+  participants  RoomParticipant[]
+}
+
+model RoomParticipant {
+  id        String   @id @default(cuid())
+  roomId    String
+  userId    String
+  score     Int      @default(0)
+  joinedAt  DateTime @default(now())
+
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+}
+
+model Withdrawal {
+  id             String   @id @default(cuid())
+  userId         String
+  username       String
+  amountUSD      Float
+  pointsUsed     Int
+  method         String
+  accountDetails String
+  status         String   @default("pending")
+  requestedAt    DateTime @default(now())
+  processedAt    DateTime?
+  adminNote      String?
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CoinHistory {
+  id              String   @id @default(cuid())
+  userId          String
+  date            DateTime @default(now())
+  activity        String
+  pointsEarned    Int      @default(0)
+  pointsDeducted  Int      @default(0)
+  balanceAfter    Int      @default(0)
+  status          String   @default("completed")
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VideoWatch {
+  id           String   @id @default(cuid())
+  userId       String
+  videoId      String
+  watchedAt    DateTime @default(now())
+  rewardPoints Int
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video        Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+}
+
+model GameResult {
+  id           String   @id @default(cuid())
+  userId       String
+  username     String
+  gameName     String
+  gameType     String
+  entryFee     Int      @default(0)
+  result       String
+  pointsChange Int      @default(0)
+  playedAt     DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OfficialLink {
+  id             String   @id @default(cuid())
+  label          String
+  username       String
+  referralCode   String   @unique
+  referralLink   String
+  createdAt      DateTime @default(now())
+  registrations  Int      @default(0)
+  isActive       Boolean  @default(true)
+}
+
+model BusinessCampaign {
+  id            String   @id @default(cuid())
+  businessId    String
+  businessName  String
+  type          String
+  title         String
+  description   String
+  budget        Float    @default(0)
+  spent         Float    @default(0)
+  views         Int      @default(0)
+  clicks        Int      @default(0)
+  status        String   @default("draft")
+  startDate     DateTime @default(now())
+  endDate       DateTime?
+
+  business      User     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  toName    String
+  subject   String
+  body      String
+  type      String
+  sentAt    DateTime @default(now())
+  status    String   @default("sent")
+}
+
+model Settings {
+  id                        String   @id @default("singleton")
+  welcomeBonus              Int      @default(150)
+  referralReward            Int      @default(90)
+  pointsPerDollar           Int      @default(1000)
+  minWithdrawal             Float    @default(1)
+  maxWithdrawal             Float    @default(500)
+  withdrawalMethods         String   @default("paypal,binance,paytm,jazzcash,easypaisa")
+  eventDefaultReward        Int      @default(200)
+  roomDefaultReward         Int      @default(300)
+  taskDefaultReward         Int      @default(25)
+  videoDefaultReward        Int      @default(10)
+  withdrawalProcessingHours String   @default("24-72 Hours")
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
