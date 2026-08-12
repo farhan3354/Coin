@@ -10,14 +10,12 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Coins, Eye, EyeOff, Shield, Smartphone, Globe, Fingerprint, RotateCcw, Mail } from "lucide-react";
+import { Coins, Eye, EyeOff, Shield, Smartphone, Fingerprint, RotateCcw, Mail, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const countries = [
@@ -27,11 +25,44 @@ const countries = [
   "Germany", "France", "Brazil", "Mexico", "Other",
 ];
 
+// Helper: map DB user to store-compatible user object
+function mapDbUser(u: any) {
+  return {
+    id: u.id,
+    fullName: u.fullName,
+    username: u.username,
+    email: u.email,
+    password: u.password || "",
+    country: u.country,
+    role: u.role || "user",
+    referralCode: u.referralCode,
+    referredBy: u.referredBy || undefined,
+    points: u.points || 0,
+    coins: u.coins || 0,
+    diamonds: u.diamonds || 0,
+    dollarBalance: u.dollarBalance || 0,
+    hasFirstWithdrawal: u.hasFirstWithdrawal || false,
+    emailVerified: u.emailVerified ?? true,
+    deviceFingerprint: u.deviceFingerprint || "",
+    browserInfo: u.browserInfo || "",
+    ipAddress: u.ipAddress || "0.0.0.0",
+    createdAt: u.createdAt || new Date().toISOString(),
+    lastLogin: u.lastLogin || undefined,
+    status: u.status || "active",
+    avatarColor: u.avatarColor || "#16a34a",
+    totalReferrals: u.totalReferrals || 0,
+    activeReferrals: u.activeReferrals || 0,
+    roomLevel: u.roomLevel || 1,
+    roomXP: u.roomXP || 0,
+    isSuperStar: u.isSuperStar || false,
+    roomTasksCompleted: u.roomTasksCompleted || 0,
+  };
+}
+
 export function AuthModals() {
   const { authModal, closeAuth, openAuth, register, login, verifyOtp, forgotPassword, setView } = useStore();
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   // login form
@@ -54,6 +85,10 @@ export function AuthModals() {
   const [otp, setOtp] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
 
+  // pending user for OTP verification (from DB registration)
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [pendingEmail, setPendingEmailLocal] = useState<string | null>(null);
+
   // forgot password states
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotStep, setForgotStep] = useState<"email" | "code" | "newpass">("email");
@@ -67,11 +102,11 @@ export function AuthModals() {
   if (lastModal !== authModal) {
     setLastModal(authModal);
     setError("");
-    setSuccess("");
     setOtp("");
     if (authModal === "forgot") setForgotStep("email");
   }
 
+  // ─────────────────────────────────── LOGIN ───────────────────────────────────
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -85,37 +120,59 @@ export function AuthModals() {
       const data = await res.json();
       setLoading(false);
       if (!data.ok) {
+        // Account exists but email not verified — redirect to OTP
+        if (data.unverified && data.userId) {
+          setPendingUserId(data.userId);
+          setPendingEmailLocal(data.email || loginEmail);
+          useStore.setState({ pendingEmail: data.email || loginEmail });
+          openAuth("otp");
+          toast.info("Please verify your email first. A new code has been sent.");
+          return;
+        }
         setError(data.message);
       } else {
-        // Also call the store login for local state
-        const r = login(loginEmail, loginPwd);
-        if (r.ok) {
-          toast.success("Logged in successfully!");
-          setView("dashboard");
-          closeAuth();
+        // Sync DB user into store
+        if (data.user) {
+          const dbUser = mapDbUser(data.user);
+          const currentState = useStore.getState();
+          const exists = currentState.users.find((u) => u.id === dbUser.id);
+          if (exists) {
+            useStore.setState({ users: currentState.users.map((u) => u.id === dbUser.id ? dbUser : u) });
+          } else {
+            useStore.setState({ users: [...currentState.users, dbUser] });
+          }
+          useStore.setState({
+            currentUserId: dbUser.id,
+            authModal: null,
+          });
+          if (dbUser.role === "admin") useStore.setState({ currentView: "admin" });
+          else if (dbUser.role === "business") useStore.setState({ currentView: "business" });
+          else useStore.setState({ currentView: "dashboard" });
         } else {
-          // Fallback: sync user from API response
-          toast.success("Logged in successfully!");
-          setView("dashboard");
-          closeAuth();
+          // Fallback: local store login
+          const r = login(loginEmail, loginPwd);
+          if (!r.ok) setError(r.message);
         }
+        toast.success("Logged in successfully!");
+        closeAuth();
       }
     } catch {
       setLoading(false);
-      // Fallback to local store login
+      // Fallback to local store
       const r = login(loginEmail, loginPwd);
       if (!r.ok) setError(r.message);
       else {
         toast.success(r.message);
-        setView("dashboard");
         closeAuth();
       }
     }
   };
 
+  // ─────────────────────────────────── REGISTER ────────────────────────────────
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
     if (!reg.firstName.trim() || !reg.lastName.trim()) {
       setError("Please enter your first and last name");
       return;
@@ -157,23 +214,35 @@ export function AuthModals() {
       const data = await res.json();
       setLoading(false);
 
+      if (data.unverified && data.userId) {
+        // Account already exists but email not verified — send them to OTP
+        setPendingUserId(data.userId);
+        setPendingEmailLocal(data.email || reg.email);
+        useStore.setState({ pendingEmail: data.email || reg.email });
+        openAuth("otp");
+        toast.info("Account already exists! A new OTP has been sent to your email.");
+        return;
+      }
+
       if (!data.ok) {
         setError(data.message);
+        return;
+      }
+
+      // Successfully created account — go to OTP verification
+      setPendingUserId(data.userId);
+      setPendingEmailLocal(data.email || reg.email);
+      useStore.setState({ pendingEmail: data.email || reg.email });
+      openAuth("otp");
+
+      if (data.sent === false) {
+        toast.warning("Account created! However, the email could not be sent. Use Resend Code to try again.");
       } else {
-        // Also register in local store for immediate UI
-        register({
-          fullName,
-          username,
-          email: reg.email,
-          password: reg.password,
-          country: reg.country,
-          referralCode: reg.referralCode || undefined,
-        });
-        toast.success("Account created! Check your email for the verification code.");
+        toast.success("Account created! A verification code has been sent to your email.");
       }
     } catch {
       setLoading(false);
-      // Fallback to local store
+      // Fallback to local store (offline mode)
       const r = register({
         fullName,
         username,
@@ -183,10 +252,14 @@ export function AuthModals() {
         referralCode: reg.referralCode || undefined,
       });
       if (!r.ok) setError(r.message);
-      else toast.success(r.message);
+      else {
+        setPendingEmailLocal(reg.email);
+        toast.success(r.message);
+      }
     }
   };
 
+  // ─────────────────────────────────── OTP VERIFY ──────────────────────────────
   const handleOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -196,45 +269,117 @@ export function AuthModals() {
     }
 
     setLoading(true);
-    // Try server-side verification first
-    const state = useStore.getState();
-    const pendingUser = state.users.find((u) => u.email === state.pendingEmail);
 
-    if (pendingUser) {
+    // Resolve userId: use pendingUserId (from API) or fall back to local store user
+    const storeState = useStore.getState();
+    const resolvedEmail = pendingEmail || storeState.pendingEmail;
+    const userId =
+      pendingUserId ||
+      storeState.users.find((u) => u.email === resolvedEmail)?.id;
+
+    if (userId) {
       try {
         const res = await fetch("/api/auth/verify-otp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: pendingUser.id, code: otp }),
+          body: JSON.stringify({ userId, code: otp }),
         });
         const data = await res.json();
         setLoading(false);
 
         if (!data.ok) {
-          setError(data.message);
+          setError(data.message || "Invalid or expired code. Please try again.");
           return;
         }
-        // Update local store
-        verifyOtp(otp);
-        toast.success("Email verified! Welcome bonus credited!");
+
+        // ── Sync DB user into local store ──
+        if (data.user) {
+          const dbUser = mapDbUser(data.user);
+          const latest = useStore.getState();
+          const exists = latest.users.find((u) => u.id === dbUser.id);
+          const updatedUsers = exists
+            ? latest.users.map((u) => (u.id === dbUser.id ? dbUser : u))
+            : [...latest.users, dbUser];
+
+          // Add welcome notification & coin history if not already present
+          const alreadyHasBonus = latest.coinHistory.some(
+            (h) => h.userId === dbUser.id && h.activity === "Welcome Bonus"
+          );
+          const newHistory = alreadyHasBonus
+            ? latest.coinHistory
+            : [
+                {
+                  id: `ch_${Date.now()}`,
+                  userId: dbUser.id,
+                  date: new Date().toISOString(),
+                  activity: "Welcome Bonus",
+                  pointsEarned: dbUser.points,
+                  pointsDeducted: 0,
+                  balanceAfter: dbUser.points,
+                  status: "completed",
+                },
+                ...latest.coinHistory,
+              ];
+          const alreadyHasNotif = latest.notifications.some(
+            (n) => n.userId === dbUser.id && n.title === "Welcome to EarnCoin!"
+          );
+          const newNotifs = alreadyHasNotif
+            ? latest.notifications
+            : [
+                {
+                  id: `n_${Date.now()}`,
+                  userId: dbUser.id,
+                  title: "Welcome to EarnCoin!",
+                  message: `Your account is verified. Welcome bonus points credited.`,
+                  type: "announcement" as const,
+                  read: false,
+                  createdAt: new Date().toISOString(),
+                },
+                ...latest.notifications,
+              ];
+
+          useStore.setState({
+            users: updatedUsers,
+            coinHistory: newHistory,
+            notifications: newNotifs,
+            currentUserId: dbUser.id,
+            authModal: null,
+            pendingEmail: null,
+            currentView: "dashboard",
+          });
+          setPendingUserId(null);
+          setPendingEmailLocal(null);
+          toast.success("Email verified! Welcome bonus credited! 🎉");
+        } else {
+          // data.ok but no user returned — fall back to local store verification
+          const r = verifyOtp(otp);
+          if (!r.ok) setError(r.message);
+          else toast.success(r.message);
+        }
         return;
       } catch {
-        // Fallback
+        setLoading(false);
+        // Network error — fall back to local
       }
     }
 
-    // Fallback to local store
+    // Fallback: local store OTP (demo mode — accepts any 6-digit code)
     const r = verifyOtp(otp);
     setLoading(false);
     if (!r.ok) setError(r.message);
     else toast.success(r.message);
   };
 
+  // ─────────────────────────────────── RESEND OTP ──────────────────────────────
   const handleResendOtp = async () => {
     if (resendCooldown > 0) return;
-    const state = useStore.getState();
-    const email = state.pendingEmail;
-    if (!email) return;
+
+    const storeState = useStore.getState();
+    const email = pendingEmail || storeState.pendingEmail;
+    if (!email) {
+      toast.error("Email not found. Please go back and register again.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -247,31 +392,34 @@ export function AuthModals() {
       setLoading(false);
 
       if (data.ok) {
+        // Also update pendingUserId if returned
+        if (data.userId && !pendingUserId) setPendingUserId(data.userId);
         toast.success("New verification code sent to your email!");
-        setResendCooldown(60);
-        const interval = setInterval(() => {
-          setResendCooldown((c) => {
-            if (c <= 1) {
-              clearInterval(interval);
-              return 0;
-            }
-            return c - 1;
-          });
-        }, 1000);
+        startResendCooldown();
       } else {
-        toast.error(data.message || "Failed to resend code");
+        toast.error(data.message || "Failed to resend code. Please try again.");
       }
     } catch {
       setLoading(false);
-      toast.error("Failed to resend code. Please try again.");
+      toast.error("Failed to resend code. Check your internet connection.");
     }
   };
 
+  const startResendCooldown = () => {
+    setResendCooldown(60);
+    const interval = setInterval(() => {
+      setResendCooldown((c) => {
+        if (c <= 1) { clearInterval(interval); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+  };
+
+  // ─────────────────────────────────── FORGOT PASSWORD ─────────────────────────
   const handleForgotSubmitEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
@@ -280,7 +428,6 @@ export function AuthModals() {
       });
       const data = await res.json();
       setLoading(false);
-
       if (!data.ok) {
         setError(data.message);
       } else {
@@ -290,13 +437,9 @@ export function AuthModals() {
       }
     } catch {
       setLoading(false);
-      // Fallback to local store
       const r = forgotPassword(forgotEmail);
       if (!r.ok) setError(r.message);
-      else {
-        toast.success(r.message);
-        setForgotStep("code");
-      }
+      else { toast.success(r.message); setForgotStep("code"); }
     }
   };
 
@@ -313,16 +456,8 @@ export function AuthModals() {
   const handleForgotSubmitNewPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
-    if (newPassword !== confirmNewPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
+    if (newPassword.length < 6) { setError("Password must be at least 6 characters"); return; }
+    if (newPassword !== confirmNewPassword) { setError("Passwords do not match"); return; }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/reset-password", {
@@ -332,7 +467,6 @@ export function AuthModals() {
       });
       const data = await res.json();
       setLoading(false);
-
       if (!data.ok) {
         setError(data.message);
       } else {
@@ -349,9 +483,12 @@ export function AuthModals() {
     }
   };
 
+  // ─────────────────────────────────── RENDER ──────────────────────────────────
+  const displayEmail = pendingEmail || useStore.getState().pendingEmail || "";
+
   return (
     <>
-      {/* Login */}
+      {/* ── Login ── */}
       <Dialog open={authModal === "login"} onOpenChange={(o) => !o && closeAuth()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -392,7 +529,7 @@ export function AuthModals() {
         </DialogContent>
       </Dialog>
 
-      {/* Register */}
+      {/* ── Register ── */}
       <Dialog open={authModal === "register"} onOpenChange={(o) => !o && closeAuth()}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -461,7 +598,7 @@ export function AuthModals() {
             <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 text-xs text-muted-foreground">
               <div className="flex items-center gap-2"><Shield className="w-3.5 h-3.5" /> One device = one account (fingerprint enforced)</div>
               <div className="flex items-center gap-2"><Fingerprint className="w-3.5 h-3.5" /> Duplicate and fake accounts are blocked</div>
-              <div className="flex items-center gap-2"><Smartphone className="w-3.5 h-3.5" /> Email & OTP verification required</div>
+              <div className="flex items-center gap-2"><Smartphone className="w-3.5 h-3.5" /> Email &amp; OTP verification required</div>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Creating account..." : "Create Account"}
@@ -474,19 +611,37 @@ export function AuthModals() {
         </DialogContent>
       </Dialog>
 
-      {/* OTP Verification */}
+      {/* ── OTP Verification ── */}
       <Dialog open={authModal === "otp"} onOpenChange={(o) => !o && closeAuth()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Verify your email</DialogTitle>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="grid place-items-center w-9 h-9 rounded-xl bg-primary/10 text-primary">
+                <Mail className="w-5 h-5" />
+              </span>
+              <DialogTitle>Verify your email</DialogTitle>
+            </div>
             <DialogDescription>
-              We&apos;ve sent a 6-digit code to your email. Enter it below to verify your account.
+              We&apos;ve sent a 6-digit code to{" "}
+              {displayEmail ? (
+                <strong className="text-foreground">{displayEmail}</strong>
+              ) : (
+                "your email"
+              )}
+              . Enter it below to activate your account.
             </DialogDescription>
           </DialogHeader>
+
           <form onSubmit={handleOtp} className="space-y-4">
-            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-            <div className="flex justify-center">
-              <InputOTP maxLength={6} value={otp} onChange={(v) => setOtp(v)}>
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex justify-center py-2">
+              <InputOTP maxLength={6} value={otp} onChange={(v) => { setOtp(v); setError(""); }}>
                 <InputOTPGroup>
                   <InputOTPSlot index={0} />
                   <InputOTPSlot index={1} />
@@ -497,27 +652,50 @@ export function AuthModals() {
                 </InputOTPGroup>
               </InputOTP>
             </div>
+
             <Button type="submit" className="w-full" disabled={loading || otp.length !== 6}>
-              {loading ? "Verifying..." : "Verify & Continue"}
+              {loading ? "Verifying..." : (
+                <><CheckCircle2 className="w-4 h-4 mr-2" /> Verify &amp; Continue</>
+              )}
             </Button>
           </form>
-          <div className="text-center space-y-2">
-            <p className="text-sm text-muted-foreground">Didn&apos;t receive the code?</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleResendOtp}
-              disabled={loading || resendCooldown > 0}
-              className="gap-2"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
-            </Button>
+
+          {/* Resend + Back */}
+          <div className="space-y-3">
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-2">Didn&apos;t receive the code?</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResendOtp}
+                disabled={loading || resendCooldown > 0}
+                className="gap-2"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
+              </Button>
+            </div>
+
+            <div className="text-center border-t pt-3">
+              <p className="text-xs text-muted-foreground mb-2">Wrong email? Go back and register again.</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setOtp("");
+                  setError("");
+                  openAuth("register");
+                }}
+                className="gap-2 text-muted-foreground"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to Registration
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Forgot Password - Multi-step */}
+      {/* ── Forgot Password (multi-step) ── */}
       <Dialog open={authModal === "forgot"} onOpenChange={(o) => !o && closeAuth()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -533,7 +711,6 @@ export function AuthModals() {
             </DialogDescription>
           </DialogHeader>
 
-          {/* Step 1: Email */}
           {forgotStep === "email" && (
             <form onSubmit={handleForgotSubmitEmail} className="space-y-4">
               {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
@@ -548,7 +725,6 @@ export function AuthModals() {
             </form>
           )}
 
-          {/* Step 2: Enter Code */}
           {forgotStep === "code" && (
             <form onSubmit={handleForgotSubmitCode} className="space-y-4">
               {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
@@ -575,22 +751,13 @@ export function AuthModals() {
             </form>
           )}
 
-          {/* Step 3: New Password */}
           {forgotStep === "newpass" && (
             <form onSubmit={handleForgotSubmitNewPassword} className="space-y-4">
               {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
               <div className="space-y-2">
                 <Label htmlFor="fnewpwd">New Password</Label>
                 <div className="relative">
-                  <Input
-                    id="fnewpwd"
-                    type={showPwd ? "text" : "password"}
-                    required
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
-                    minLength={6}
-                  />
+                  <Input id="fnewpwd" type={showPwd ? "text" : "password"} required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" minLength={6} />
                   <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                     {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -598,15 +765,7 @@ export function AuthModals() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fconfirmpwd">Confirm New Password</Label>
-                <Input
-                  id="fconfirmpwd"
-                  type={showPwd ? "text" : "password"}
-                  required
-                  value={confirmNewPassword}
-                  onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  minLength={6}
-                />
+                <Input id="fconfirmpwd" type={showPwd ? "text" : "password"} required value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} placeholder="••••••••" minLength={6} />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Resetting..." : "Reset Password"}

@@ -19,7 +19,8 @@ export async function POST(req: NextRequest) {
   const { fullName, username, email, password, country, referralCode } = await req.json();
   const ua = req.headers.get("user-agent") || "unknown";
 
-  const exists = await db.user.findFirst({
+  // Check if user already exists
+  const existingUser = await db.user.findFirst({
     where: {
       OR: [
         { email: { equals: email, mode: "insensitive" } },
@@ -27,7 +28,59 @@ export async function POST(req: NextRequest) {
       ],
     },
   });
-  if (exists) return NextResponse.json({ ok: false, message: "Email or username already in use" }, { status: 409 });
+
+  if (existingUser) {
+    // If user exists by email and is NOT verified, resend OTP and let them verify
+    if (
+      existingUser.email.toLowerCase() === email.toLowerCase() &&
+      !existingUser.emailVerified
+    ) {
+      // Invalidate old OTPs
+      await db.emailVerification.updateMany({
+        where: { userId: existingUser.id, used: false },
+        data: { used: true },
+      });
+
+      // Generate new OTP
+      const otp = generateOTP();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      await db.emailVerification.create({
+        data: { userId: existingUser.id, code: otp, expiresAt },
+      });
+
+      // Send verification email
+      const sent = await sendEmail({
+        to: existingUser.email,
+        subject: "Verify Your EarnCoin Email",
+        html: otpEmailTemplate(existingUser.fullName, otp),
+      });
+
+      await db.emailLog.create({
+        data: {
+          to: existingUser.email,
+          toName: existingUser.fullName,
+          subject: "Email Verification OTP",
+          body: `Verification OTP: ${otp}`,
+          type: "verification",
+          status: sent ? "sent" : "failed",
+        },
+      });
+
+      return NextResponse.json({
+        ok: false,
+        unverified: true,
+        userId: existingUser.id,
+        email: existingUser.email,
+        message: "Account already registered but not verified. A new OTP has been sent to your email.",
+      }, { status: 200 });
+    }
+
+    // User exists and is verified (or username taken)
+    return NextResponse.json(
+      { ok: false, message: "Email or username already in use" },
+      { status: 409 }
+    );
+  }
 
   const fp = genDeviceFingerprint(ua);
   const dupDevice = await db.user.findFirst({ where: { deviceFingerprint: fp } });
@@ -49,11 +102,7 @@ export async function POST(req: NextRequest) {
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
   await db.emailVerification.create({
-    data: {
-      userId: user.id,
-      code: otp,
-      expiresAt,
-    },
+    data: { userId: user.id, code: otp, expiresAt },
   });
 
   // Send verification email
@@ -75,5 +124,5 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ ok: true, userId: user.id, email: user.email });
+  return NextResponse.json({ ok: true, userId: user.id, email: user.email, sent });
 }
