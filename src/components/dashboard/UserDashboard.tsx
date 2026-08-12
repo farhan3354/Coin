@@ -183,7 +183,7 @@ export function UserDashboard() {
             {liveEvents.length === 0 && <p className="text-sm text-muted-foreground">No live events right now.</p>}
             {liveEvents.slice(0, 3).map((e) => (
               <div key={e.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border">
-                <div className="min-w-0">
+                <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{e.title}</p>
                   <p className="text-xs text-muted-foreground capitalize">{e.type} · +{e.rewardPoints} pts</p>
                 </div>
@@ -205,7 +205,7 @@ export function UserDashboard() {
           <CardContent className="space-y-3">
             {openRooms.slice(0, 3).map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border">
-                <div className="min-w-0">
+                <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{r.name}</p>
                   <p className="text-xs text-muted-foreground capitalize">{r.tier} · +{r.rewardPoints} pts</p>
                 </div>
@@ -229,7 +229,7 @@ export function UserDashboard() {
           <CardContent className="space-y-2">
             {recentVideos.map((v) => (
               <div key={v.id} className="flex items-center justify-between gap-2 p-2 rounded-md hover:bg-muted/50">
-                <div className="min-w-0 flex items-center gap-3">
+                <div className="flex-1 min-w-0 flex items-center gap-3">
                   <div className="w-10 h-10 rounded bg-primary/10 grid place-items-center flex-shrink-0">
                     <Video className="w-5 h-5 text-primary" />
                   </div>
@@ -274,7 +274,7 @@ export function UserDashboard() {
           <CardContent className="space-y-2">
             {recentTasks.map((t) => (
               <div key={t.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                <div className="min-w-0">
+                <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{t.title}</p>
                   <p className="text-xs text-muted-foreground">{t.completed}/{t.availability} completed</p>
                 </div>
