@@ -71,10 +71,10 @@ export function UserDashboard() {
                   </AvatarFallback>
                 </Avatar>
               </motion.div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">Welcome back,</p>
-                <h1 className="text-2xl font-bold">{user.fullName}</h1>
-                <p className="text-sm text-muted-foreground">@{user.username} · {user.country}</p>
+                <h1 className="text-2xl font-bold truncate">{user.fullName}</h1>
+                <p className="text-sm text-muted-foreground truncate">@{user.username} · {user.country}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -113,7 +113,7 @@ export function UserDashboard() {
               <div>
                 <Label className="text-xs text-muted-foreground">Your referral code</Label>
                 <div className="flex gap-2 mt-1">
-                  <div className="flex-1 px-3 py-2 rounded-md bg-muted font-mono font-bold tracking-wider">{user.referralCode}</div>
+                  <div className="flex-1 min-w-0 px-3 py-2 rounded-md bg-muted font-mono font-bold tracking-wider truncate">{user.referralCode}</div>
                   <Button size="icon" variant="outline" onClick={() => copyReferral(user.referralCode, "Code")}>
                     <Copy className="w-4 h-4" />
                   </Button>
@@ -122,25 +122,25 @@ export function UserDashboard() {
               <div>
                 <Label className="text-xs text-muted-foreground">Your referral link</Label>
                 <div className="flex gap-2 mt-1">
-                  <div className="flex-1 px-3 py-2 rounded-md bg-muted text-sm truncate">{referralLink}</div>
+                  <div className="flex-1 min-w-0 px-3 py-2 rounded-md bg-muted text-sm truncate">{referralLink}</div>
                   <Button size="icon" variant="outline" onClick={() => copyReferral(referralLink, "Link")}>
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3 pt-2">
-              <div className="text-center p-3 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold">{user.totalReferrals}</p>
-                <p className="text-xs text-muted-foreground">Total Referrals</p>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 pt-2">
+              <div className="text-center p-2 sm:p-3 rounded-lg bg-muted/50">
+                <p className="text-xl sm:text-2xl font-bold">{user.totalReferrals}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Total Referrals</p>
               </div>
-              <div className="text-center p-3 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold text-green-600">{user.activeReferrals}</p>
-                <p className="text-xs text-muted-foreground">Active</p>
+              <div className="text-center p-2 sm:p-3 rounded-lg bg-muted/50">
+                <p className="text-xl sm:text-2xl font-bold text-green-600">{user.activeReferrals}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Active</p>
               </div>
-              <div className="text-center p-3 rounded-lg bg-muted/50">
-                <p className="text-2xl font-bold text-amber-600">{user.totalReferrals - user.activeReferrals}</p>
-                <p className="text-xs text-muted-foreground">Pending</p>
+              <div className="text-center p-2 sm:p-3 rounded-lg bg-muted/50">
+                <p className="text-xl sm:text-2xl font-bold text-amber-600">{user.totalReferrals - user.activeReferrals}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Pending</p>
               </div>
             </div>
             <Button variant="outline" className="w-full" onClick={() => goTo("referrals")}>
@@ -187,7 +187,7 @@ export function UserDashboard() {
                   <p className="font-medium text-sm truncate">{e.title}</p>
                   <p className="text-xs text-muted-foreground capitalize">{e.type} · +{e.rewardPoints} pts</p>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0">
                   <Badge variant="secondary" className="bg-red-100 text-red-700">LIVE</Badge>
                   <CountdownTimer endTime={e.endTime} compact className="block mt-1 text-xs" />
                 </div>
@@ -209,7 +209,7 @@ export function UserDashboard() {
                   <p className="font-medium text-sm truncate">{r.name}</p>
                   <p className="text-xs text-muted-foreground capitalize">{r.tier} · +{r.rewardPoints} pts</p>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0">
                   <Badge variant="outline" className="capitalize">{r.tier}</Badge>
                   <p className="text-xs text-muted-foreground mt-1">{r.participants.length}/{r.capacity}</p>
                 </div>
@@ -238,7 +238,7 @@ export function UserDashboard() {
                     <p className="text-xs text-muted-foreground capitalize">{v.platform} · {v.watchDurationSec}s</p>
                   </div>
                 </div>
-                <Badge variant="outline" className="flex items-center gap-1 whitespace-nowrap">
+                <Badge variant="outline" className="flex items-center gap-1 whitespace-nowrap flex-shrink-0">
                   <Coins className="w-3 h-3 text-primary" /> +{v.rewardPoints}
                 </Badge>
               </div>
@@ -278,7 +278,7 @@ export function UserDashboard() {
                   <p className="font-medium text-sm truncate">{t.title}</p>
                   <p className="text-xs text-muted-foreground">{t.completed}/{t.availability} completed</p>
                 </div>
-                <Badge variant="outline" className="flex items-center gap-1">
+                <Badge variant="outline" className="flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
                   <Coins className="w-3 h-3 text-primary" /> +{t.rewardPoints}
                 </Badge>
               </div>

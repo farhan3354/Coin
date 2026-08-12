@@ -617,11 +617,11 @@ export function ReferralsPage() {
         <p className="text-muted-foreground mt-1">Invite friends and earn {settings.referralReward} points per verified referral.</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card><CardContent className="p-5 text-center"><Users className="w-6 h-6 mx-auto text-primary mb-2" /><p className="text-2xl font-bold">{user.totalReferrals}</p><p className="text-xs text-muted-foreground">Total Referrals</p></CardContent></Card>
-        <Card><CardContent className="p-5 text-center"><CheckCircle2 className="w-6 h-6 mx-auto text-green-600 mb-2" /><p className="text-2xl font-bold text-green-600">{user.activeReferrals}</p><p className="text-xs text-muted-foreground">Active Referrals</p></CardContent></Card>
-        <Card><CardContent className="p-5 text-center"><Clock className="w-6 h-6 mx-auto text-amber-600 mb-2" /><p className="text-2xl font-bold text-amber-600">{user.totalReferrals - user.activeReferrals}</p><p className="text-xs text-muted-foreground">Pending Verification</p></CardContent></Card>
-        <Card><CardContent className="p-5 text-center"><Coins className="w-6 h-6 mx-auto text-primary mb-2" /><p className="text-2xl font-bold">{formatPoints(earnings)}</p><p className="text-xs text-muted-foreground">Referral Earnings</p></CardContent></Card>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <Card><CardContent className="p-3 sm:p-5 text-center"><Users className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-primary mb-1 sm:mb-2" /><p className="text-lg sm:text-2xl font-bold">{user.totalReferrals}</p><p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Total Referrals</p></CardContent></Card>
+        <Card><CardContent className="p-3 sm:p-5 text-center"><CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-green-600 mb-1 sm:mb-2" /><p className="text-lg sm:text-2xl font-bold text-green-600">{user.activeReferrals}</p><p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Active Referrals</p></CardContent></Card>
+        <Card><CardContent className="p-3 sm:p-5 text-center"><Clock className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-amber-600 mb-1 sm:mb-2" /><p className="text-lg sm:text-2xl font-bold text-amber-600">{user.totalReferrals - user.activeReferrals}</p><p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Pending Verification</p></CardContent></Card>
+        <Card><CardContent className="p-3 sm:p-5 text-center"><Coins className="w-5 h-5 sm:w-6 sm:h-6 mx-auto text-primary mb-1 sm:mb-2" /><p className="text-lg sm:text-2xl font-bold">{formatPoints(earnings)}</p><p className="text-[10px] sm:text-xs text-muted-foreground leading-tight">Referral Earnings</p></CardContent></Card>
       </div>
 
       <Card>
@@ -631,11 +631,11 @@ export function ReferralsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-col sm:flex-row gap-2">
-            <div className="flex-1 px-4 py-3 rounded-md bg-muted font-mono text-sm truncate">{user.referralCode}</div>
+            <div className="flex-1 min-w-0 px-4 py-3 rounded-md bg-muted font-mono text-sm truncate">{user.referralCode}</div>
             <Button variant="outline" onClick={() => copy(user.referralCode, "Code")}><Copy className="w-4 h-4 mr-2" /> Copy Code</Button>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <div className="flex-1 px-4 py-3 rounded-md bg-muted text-sm truncate">{referralLink}</div>
+            <div className="flex-1 min-w-0 px-4 py-3 rounded-md bg-muted text-sm truncate">{referralLink}</div>
             <Button variant="outline" onClick={() => copy(referralLink, "Link")}><Copy className="w-4 h-4 mr-2" /> Copy Link</Button>
             <Button onClick={() => {
               if (navigator.share) navigator.share({ title: "Join EarnCoin", url: referralLink });
