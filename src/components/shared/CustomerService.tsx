@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Headphones, X, MessageCircle, Mail, Phone, WhatsApp } from "lucide-react";
+import { Headphones, X, MessageCircle, Mail, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 
@@ -12,7 +12,7 @@ export function CustomerService() {
 
   const options = [
     { icon: MessageCircle, label: "WhatsApp", value: "+971 50 932 7341", action: () => window.open("https://wa.me/971509327341", "_blank") },
-    { icon: Mail, label: "Email", value: "support@earncoin.com", action: () => window.open("mailto:support@earncoin.com", "_blank") },
+    { icon: Mail, label: "Email", value: "earncoinofficial804@gmail.com", action: () => window.open("mailto:earncoinofficial804@gmail.com", "_blank") },
     { icon: Phone, label: "Phone", value: "+971 50 932 7341", action: () => {} },
     { icon: Headphones, label: "Support Ticket", value: "Open a ticket", action: () => setView("contact") },
   ];
@@ -21,8 +21,8 @@ export function CustomerService() {
     <>
       {/* Floating button on RIGHT side */}
       <motion.button
-        initial={{ x: 80 }}
-        animate={{ x: 0 }}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.5 }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -47,9 +47,9 @@ export function CustomerService() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ x: 300, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 300, opacity: 0 }}
+            initial={{ scale: 0.9, opacity: 0, transformOrigin: "right center" }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="fixed right-4 top-1/2 -translate-y-1/2 z-30 w-64 rounded-xl border bg-card shadow-xl overflow-hidden"
           >

@@ -788,6 +788,9 @@ export const useStore = create<EarnState>()(
           role: "user",
           referralCode,
           referredBy: undefined, // NO referrer — this is an official root link
+          coins: 0,
+          diamonds: 0,
+          hasFirstWithdrawal: false,
           points: 0,
           dollarBalance: 0,
           emailVerified: true,

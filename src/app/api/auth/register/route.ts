@@ -83,8 +83,8 @@ export async function POST(req: NextRequest) {
   }
 
   const fp = genDeviceFingerprint(ua);
-  const dupDevice = await db.user.findFirst({ where: { deviceFingerprint: fp } });
-  if (dupDevice) return NextResponse.json({ ok: false, message: "This device already has an account." }, { status: 409 });
+  // const dupDevice = await db.user.findFirst({ where: { deviceFingerprint: fp } });
+  // if (dupDevice) return NextResponse.json({ ok: false, message: "This device already has an account." }, { status: 409 });
 
   const user = await db.user.create({
     data: {

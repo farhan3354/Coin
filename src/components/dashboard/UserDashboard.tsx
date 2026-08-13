@@ -207,11 +207,11 @@ export function UserDashboard() {
               <div key={r.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{r.name}</p>
-                  <p className="text-xs text-muted-foreground capitalize">{r.tier} · +{r.rewardPoints} pts</p>
+                  <p className="text-xs text-muted-foreground capitalize">Level {r.level} · +{r.rewardPoints} pts</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <Badge variant="outline" className="capitalize">{r.tier}</Badge>
-                  <p className="text-xs text-muted-foreground mt-1">{r.participants.length}/{r.capacity}</p>
+                  <Badge variant="outline" className="capitalize">Level {r.level}</Badge>
+                  <p className="text-xs text-muted-foreground mt-1">{r.participants.length}/{r.seats}</p>
                 </div>
               </div>
             ))}

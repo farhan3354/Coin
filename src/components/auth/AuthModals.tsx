@@ -316,7 +316,7 @@ export function AuthModals() {
                   pointsEarned: dbUser.points,
                   pointsDeducted: 0,
                   balanceAfter: dbUser.points,
-                  status: "completed",
+                  status: "completed" as const,
                 },
                 ...latest.coinHistory,
               ];

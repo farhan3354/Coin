@@ -780,7 +780,7 @@ export function Contact() {
               <Mail className="w-8 h-8 text-primary mb-2" />
               <h3 className="font-semibold mb-1">Email</h3>
               <p className="text-sm text-muted-foreground mb-3">For support tickets and inquiries.</p>
-              <a href="mailto:support@earncoin.com" className="text-sm text-primary hover:underline">support@earncoin.com</a>
+              <a href="mailto:earncoinofficial804@gmail.com" className="text-sm text-primary hover:underline">earncoinofficial804@gmail.com</a>
             </CardContent>
           </Card>
           <Card>
@@ -863,7 +863,7 @@ export function Terms() {
         </section>
         <section>
           <h2 className="text-xl font-semibold mb-2">7. Contact</h2>
-          <p className="text-muted-foreground">For questions about these terms, contact us at support@earncoin.com.</p>
+          <p className="text-muted-foreground">For questions about these terms, contact us at earncoinofficial804@gmail.com.</p>
         </section>
       </div>
     </div>
@@ -896,7 +896,7 @@ export function Privacy() {
         </section>
         <section>
           <h2 className="text-xl font-semibold mb-2">5. Your Rights</h2>
-          <p className="text-muted-foreground">You may request a copy of your data, request deletion of your account, or update your profile information at any time by contacting support@earncoin.com.</p>
+          <p className="text-muted-foreground">You may request a copy of your data, request deletion of your account, or update your profile information at any time by contacting earncoinofficial804@gmail.com.</p>
         </section>
         <section>
           <h2 className="text-xl font-semibold mb-2">6. Children&apos;s Privacy</h2>

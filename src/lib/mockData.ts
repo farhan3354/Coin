@@ -228,6 +228,7 @@ export function seedUsers(): User[] {
       roomLevel: 1,
       roomXP: 0,
       diamonds: 0,
+      coins: 0,
       hasFirstWithdrawal: false,
     },
     // More sample users for leaderboard realism
@@ -249,12 +250,13 @@ export function seedUsers(): User[] {
       createdAt: new Date(now.getTime() - (i + 5) * 24 * 60 * 60 * 1000).toISOString(),
       status: "active" as const,
       avatarColor: ["#0891b2", "#dc2626", "#7c3aed", "#db2777", "#65a30d"][i % 5],
+      diamonds: 0,
+      coins: Math.floor((9800 - i * 650) / 50),
+      hasFirstWithdrawal: false,
       totalReferrals: Math.floor(Math.random() * 30),
       activeReferrals: Math.floor(Math.random() * 20),
       roomLevel: Math.min(5, Math.floor(i / 3) + 1) as 1 | 2 | 3 | 4 | 5,
       roomXP: Math.floor(Math.random() * 8000),
-      diamonds: Math.floor(Math.random() * 200),
-      hasFirstWithdrawal: Math.random() > 0.5,
     })),
   ];
 }

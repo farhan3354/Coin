@@ -65,6 +65,15 @@ export interface User {
   officialLinkLabel?: string; // optional label for official link accounts
   isSuperStar?: boolean; // completed room tasks, eligible for diamond earning
   roomTasksCompleted?: number; // count of completed room tasks for super star tracking
+  emailSubscribed?: boolean;
+  notificationPreferences?: {
+    emailOnWithdrawal: boolean;
+    emailOnReferral: boolean;
+    emailOnEvent: boolean;
+    emailOnAnnouncement: boolean;
+    emailOnNewsletter: boolean;
+    browserNotifications: boolean;
+  };
 }
 
 export interface Video {

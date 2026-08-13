@@ -16,7 +16,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { StatCard } from "@/components/shared/StatCard";
 import {
-  Users, Video, Wallet, Trophy, Crown, Settings, BarChart3, FileDown,
+  Users, Video as VideoIcon, Wallet, Trophy, Crown, Settings, BarChart3, FileDown,
   Coins, Building2, Shield, Plus, Trash2, CheckCircle2, XCircle, Clock,
   TrendingUp, Globe, Smartphone, DollarSign, Activity, Eye, EyeOff,
   Ban, RotateCcw, AlertTriangle, Link2, Copy, Gamepad2, ExternalLink,
@@ -39,7 +39,7 @@ const adminSections: AdminSection[] = [
   { value: "reports", label: "Reports", icon: FileDown, group: "main" },
   { value: "users", label: "Users", icon: Users, group: "management" },
   { value: "official-links", label: "Official Links", icon: Link2, group: "management" },
-  { value: "videos", label: "Videos", icon: Video, group: "management" },
+  { value: "videos", label: "Videos", icon: VideoIcon, group: "management" },
   { value: "tasks", label: "Tasks", icon: Activity, group: "management" },
   { value: "events", label: "Events", icon: Trophy, group: "management" },
   { value: "rooms", label: "Rooms", icon: Crown, group: "management" },
@@ -265,7 +265,7 @@ function AdminOverview() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Videos" value={videos.length} subtitle={`${videos.filter((v) => v.status === "active").length} active`} icon={Video} accent="bg-red-100 text-red-700" />
+        <StatCard title="Videos" value={videos.length} subtitle={`${videos.filter((v) => v.status === "active").length} active`} icon={VideoIcon} accent="bg-red-100 text-red-700" />
         <StatCard title="Tasks" value={tasks.length} subtitle={`${tasks.reduce((s, t) => s + t.completed, 0)} completions`} icon={Activity} accent="bg-orange-100 text-orange-700" />
         <StatCard title="Events" value={events.length} subtitle={`${events.filter((e) => e.status === "live").length} live`} icon={Trophy} accent="bg-amber-100 text-amber-700" />
         <StatCard title="Rooms" value={rooms.length} subtitle={`${rooms.filter((r) => r.status === "open").length} open`} icon={Crown} accent="bg-purple-100 text-purple-700" />

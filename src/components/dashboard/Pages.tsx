@@ -890,7 +890,7 @@ export function WithdrawalsPage() {
               {mine.map((w) => (
                 <div key={w.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-md border">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg grid place-items-center ${w.pointsDeducted > 0 || w.status === "completed" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                    <div className={`w-10 h-10 rounded-lg grid place-items-center ${w.pointsUsed > 0 || w.status === "completed" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
                       {w.status === "completed" ? <ArrowUpRight className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
                     </div>
                     <div>
