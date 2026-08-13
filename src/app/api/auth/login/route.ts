@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { sendEmail, otpEmailTemplate, generateOTP } from "@/lib/email";
 
@@ -16,7 +17,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (user.password !== password) {
+  let isPasswordValid = false;
+  if (user.password === password) {
+    isPasswordValid = true; // Support unhashed seeded users
+  } else {
+    isPasswordValid = await bcrypt.compare(password, user.password);
+  }
+
+  if (!isPasswordValid) {
     return NextResponse.json(
       { ok: false, message: "Incorrect password" },
       { status: 401 }

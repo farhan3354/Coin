@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { sendEmail, passwordChangedEmailTemplate } from "@/lib/email";
 
@@ -35,10 +36,12 @@ export async function POST(req: NextRequest) {
     data: { used: true },
   });
 
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
   // Update password
   const user = await db.user.update({
     where: { id: userId },
-    data: { password: newPassword },
+    data: { password: hashedPassword },
   });
 
   // Send confirmation email

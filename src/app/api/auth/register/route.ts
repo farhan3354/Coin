@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { sendEmail, otpEmailTemplate, generateOTP } from "@/lib/email";
 
@@ -86,9 +87,11 @@ export async function POST(req: NextRequest) {
   // const dupDevice = await db.user.findFirst({ where: { deviceFingerprint: fp } });
   // if (dupDevice) return NextResponse.json({ ok: false, message: "This device already has an account." }, { status: 409 });
 
+  const hashedPassword = await bcrypt.hash(password, 10);
+
   const user = await db.user.create({
     data: {
-      fullName, username, email, password, country,
+      fullName, username, email, password: hashedPassword, country,
       referralCode: genReferralCode(),
       referredBy: referralCode || null,
       deviceFingerprint: fp,
