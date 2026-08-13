@@ -703,28 +703,52 @@ export const useStore = create<EarnState>()(
         }) }).catch(() => {});
       },
 
-      addVideo: (v) =>
-        set((s) => ({
-          videos: [
-            {
-              ...v,
-              id: genId("v"),
-              embedUrl: buildEmbedUrl(v.url, v.platform, false),
-              totalViews: 0,
-              createdAt: new Date().toISOString(),
-            },
-            ...s.videos,
-          ],
-        })),
+      addVideo: (v) => {
+        const tempId = genId("v");
+        const tempVideo = {
+          ...v,
+          id: tempId,
+          embedUrl: buildEmbedUrl(v.url, v.platform, false),
+          totalViews: 0,
+          createdAt: new Date().toISOString(),
+        } as any;
+        set((s) => ({ videos: [tempVideo, ...s.videos] }));
+
+        // Background sync to server — replace temp entry with server record on success
+        fetch("/api/videos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...v, embedUrl: tempVideo.embedUrl }),
+        })
+          .then((r) => r.json())
+          .then((created) => {
+            set((s) => ({ videos: s.videos.map((vid) => (vid.id === tempId ? created : vid)) }));
+          })
+          .catch(() => {
+            // keep temp entry if server unreachable
+          });
+      },
       deleteVideo: (id) => set((s) => ({ videos: s.videos.filter((v) => v.id !== id) })),
 
-      addTask: (t) =>
-        set((s) => ({
-          tasks: [
-            { ...t, id: genId("t"), completed: 0, createdAt: new Date().toISOString() },
-            ...s.tasks,
-          ],
-        })),
+      addTask: (t) => {
+        const tempId = genId("t");
+        const tempTask = { ...t, id: tempId, completed: 0, createdAt: new Date().toISOString() } as any;
+        set((s) => ({ tasks: [tempTask, ...s.tasks] }));
+
+        // Background sync to server — replace temp entry with server record on success
+        fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(t),
+        })
+          .then((r) => r.json())
+          .then((created) => {
+            set((s) => ({ tasks: s.tasks.map((task) => (task.id === tempId ? created : task)) }));
+          })
+          .catch(() => {
+            // keep temp entry if server unreachable
+          });
+      },
       deleteTask: (id) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
 
       addEvent: (e) =>
@@ -1014,8 +1038,10 @@ export const useStore = create<EarnState>()(
     {
       name: "earncoin-session-v3",
       storage: createJSONStorage(() => (typeof window !== "undefined" ? localStorage : (undefined as unknown as Storage))),
+      // Persist currentUserId and the minimal current user object so UI stays logged-in
       partialize: (s) => ({
         currentUserId: s.currentUserId,
+        users: s.currentUserId ? s.users.filter((u) => u.id === s.currentUserId) : [],
       }),
     }
   )
