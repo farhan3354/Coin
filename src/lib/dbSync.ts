@@ -11,11 +11,11 @@ import { defaultSettings, buildEmbedUrl } from "./mockData";
 // Fetch all data from the database via API and load into the store
 export async function syncFromDatabase(): Promise<void> {
   try {
-    const res = await fetch("/api/stats");
+    const res = await fetch("/api/stats", { cache: "no-store" });
     if (!res.ok) return;
     const data = await res.json();
 
-    const quizRes = await fetch("/api/quizzes").catch(() => null);
+    const quizRes = await fetch("/api/quizzes", { cache: "no-store" }).catch(() => null);
     const quizzes = quizRes && quizRes.ok ? await quizRes.json() : [];
 
     // Transform DB records to app types

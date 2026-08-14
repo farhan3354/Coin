@@ -177,8 +177,9 @@ export function VideosPage() {
               <Card className="overflow-hidden hover:shadow-lg transition-shadow group h-full">
                 {/* Thumbnail */}
                 <button
-                  onClick={() => openVideoInNewTab(v.id)}
-                  className="block w-full text-left"
+                  onClick={() => !watched && openVideoInNewTab(v.id)}
+                  className={`block w-full text-left ${watched ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  disabled={watched}
                 >
                   <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 relative overflow-hidden">
                     {/* Thumbnail placeholder with platform icon */}
@@ -375,6 +376,7 @@ export function QuizzesPage() {
                       <button
                         key={i}
                         type="button"
+                        disabled={answers[idx] !== -1}
                         onClick={() =>
                           setAnswers((a) => {
                             const copy = [...a];
@@ -382,9 +384,31 @@ export function QuizzesPage() {
                             return copy;
                           })
                         }
-                        className={`p-2 rounded text-left border ${answers[idx] === i ? "bg-primary text-primary-foreground border-primary" : "bg-muted/50 border-transparent"}`}
+                        className={`p-2 rounded text-left border transition-colors ${
+                          answers[idx] === -1
+                            ? "bg-muted/50 border-transparent hover:bg-muted"
+                            : answers[idx] === i
+                              ? i === q.correctIndex
+                                ? "bg-green-600 text-white border-green-700" // Chosen & Correct
+                                : "bg-red-600 text-white border-red-700"     // Chosen & Wrong
+                              : i === q.correctIndex
+                                ? "bg-green-600/50 text-white border-green-700" // Not chosen but correct
+                                : "bg-muted/50 border-transparent opacity-50"  // Not chosen & wrong
+                        }`}
                       >
-                        {opt}
+                        <div className="flex items-center justify-between">
+                          <span>{opt}</span>
+                          {answers[idx] !== -1 && i === q.correctIndex && (
+                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                          {answers[idx] === i && i !== q.correctIndex && (
+                            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          )}
+                        </div>
                       </button>
                     ))}
                   </div>

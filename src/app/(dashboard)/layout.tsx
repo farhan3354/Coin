@@ -15,6 +15,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
   }, [user, router]);
 
+  // Sync state from database when the user switches back to this tab
+  // This ensures that rewards claimed in a new tab (like watching videos) appear immediately
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        import("@/lib/dbSync").then((module) => module.syncFromDatabase());
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
   if (user === null) {
     return null; // Or a loading spinner
   }

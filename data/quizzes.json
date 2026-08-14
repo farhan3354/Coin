@@ -1,5 +1,24 @@
 [
   {
+    "title": "Captial of Pakistan",
+    "description": "improve knoledge",
+    "rewardPoints": 10,
+    "questions": [
+      {
+        "text": "how is the captial of pakistan",
+        "options": [
+          "karachi",
+          "lahore",
+          "isalamabad",
+          "khanewal"
+        ],
+        "correctIndex": 0
+      }
+    ],
+    "id": "q_mst86ib9",
+    "createdAt": "2026-08-14T17:32:55.221Z"
+  },
+  {
     "title": "fsadfkhsjkdahfk",
     "description": "sdfjkasdhfkashdfjsdakf",
     "rewardPoints": 50,
