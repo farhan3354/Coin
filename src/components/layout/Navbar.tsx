@@ -123,7 +123,7 @@ export function Logo({
 
 export function Navbar() {
   const {
-    currentView,
+    currentView: _view,
     setView,
     openAuth,
     logout,

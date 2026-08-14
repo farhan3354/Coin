@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import ThemeProviderClient from "@/lib/theme";
+import { LayoutWrapper } from "@/components/layout/LayoutWrapper";
+import { Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,7 +42,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className="overflow-x-hidden">
       <body className={`${geistSans.variable} antialiased bg-background text-foreground overflow-x-hidden w-full relative`} suppressHydrationWarning>
         <ThemeProviderClient>
-          {children}
+          <div className="min-h-screen flex flex-col bg-background">
+            <Suspense fallback={<main className="flex-1">{children}</main>}>
+              <LayoutWrapper>{children}</LayoutWrapper>
+            </Suspense>
+          </div>
         </ThemeProviderClient>
       </body>
     </html>
