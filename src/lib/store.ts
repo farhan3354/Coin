@@ -749,7 +749,10 @@ export const useStore = create<EarnState>()(
             // keep temp entry if server unreachable
           });
       },
-      deleteVideo: (id) => set((s) => ({ videos: s.videos.filter((v) => v.id !== id) })),
+      deleteVideo: (id) => {
+        set((s) => ({ videos: s.videos.filter((v) => v.id !== id) }));
+        fetch(`/api/videos?id=${id}`, { method: "DELETE" }).catch(() => {});
+      },
 
       addTask: (t) => {
         const tempId = genId("t");
@@ -778,7 +781,10 @@ export const useStore = create<EarnState>()(
             // keep temp entry if server unreachable
           });
       },
-      deleteTask: (id) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
+      deleteTask: (id) => {
+        set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
+        fetch(`/api/tasks?id=${id}`, { method: "DELETE" }).catch(() => {});
+      },
 
       addEvent: (e) =>
         set((s) => ({
@@ -795,7 +801,10 @@ export const useStore = create<EarnState>()(
             ...s.events,
           ],
         })),
-      deleteEvent: (id) => set((s) => ({ events: s.events.filter((e) => e.id !== id) })),
+      deleteEvent: (id) => {
+        set((s) => ({ events: s.events.filter((e) => e.id !== id) }));
+        fetch(`/api/events?id=${id}`, { method: "DELETE" }).catch(() => {});
+      },
 
       addRoom: (r) =>
         set((s) => ({
@@ -804,7 +813,10 @@ export const useStore = create<EarnState>()(
             ...s.rooms,
           ],
         })),
-      deleteRoom: (id) => set((s) => ({ rooms: s.rooms.filter((r) => r.id !== id) })),
+      deleteRoom: (id) => {
+        set((s) => ({ rooms: s.rooms.filter((r) => r.id !== id) }));
+        fetch(`/api/rooms?id=${id}`, { method: "DELETE" }).catch(() => {});
+      },
 
       toggleUserStatus: (userId) =>
         set((s) => ({
@@ -868,8 +880,10 @@ export const useStore = create<EarnState>()(
         return { ok: true, message: "Official link created", link };
       },
 
-      deleteOfficialLink: (id) =>
-        set((s) => ({ officialLinks: s.officialLinks.filter((l) => l.id !== id) })),
+      deleteOfficialLink: (id) => {
+        set((s) => ({ officialLinks: s.officialLinks.filter((l) => l.id !== id) }));
+        fetch(`/api/official-links?id=${id}`, { method: "DELETE" }).catch(() => {});
+      },
 
       // Gaming system — handles entry fee deduction and reward crediting
       playGame: (gameName, gameType, entryFee, result) => {
@@ -946,7 +960,10 @@ export const useStore = create<EarnState>()(
             })
             .catch(() => {});
         },
-        deleteQuiz: (id) => set((s) => ({ quizzes: s.quizzes.filter((q) => q.id !== id) })),
+        deleteQuiz: (id) => {
+          set((s) => ({ quizzes: s.quizzes.filter((q) => q.id !== id) }));
+          fetch(`/api/quizzes?id=${id}`, { method: "DELETE" }).catch(() => {});
+        },
         submitQuiz: (quizId, answers) => {
           const state = get();
           const user = state.users.find((u) => u.id === state.currentUserId);

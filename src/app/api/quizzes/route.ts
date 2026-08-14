@@ -37,3 +37,21 @@ export async function POST(req: NextRequest) {
   await fs.writeFile(FILE, JSON.stringify(quizzes, null, 2), "utf8");
   return NextResponse.json(created);
 }
+
+export async function DELETE(req: NextRequest) {
+  const user = await getUserFromRequest(req);
+  if (!user || user.role !== "admin") return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 403 });
+  const url = new URL(req.url);
+  const id = url.searchParams.get("id");
+  if (!id) return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
+  await ensure();
+  try {
+    const raw = await fs.readFile(FILE, "utf8").catch(() => "[]");
+    let quizzes = JSON.parse(raw || "[]");
+    quizzes = quizzes.filter((q: any) => q.id !== id);
+    await fs.writeFile(FILE, JSON.stringify(quizzes, null, 2), "utf8");
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return NextResponse.json({ ok: false, message: "Delete failed" }, { status: 500 });
+  }
+}
