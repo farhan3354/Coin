@@ -30,12 +30,12 @@ function verifyToken(token: string) {
 export async function getUserFromRequest(req: NextRequest) {
   // Try Authorization header first
   const auth = req.headers.get("authorization") || "";
-  let token = null;
+  let token: string | null = null;
   if (auth.startsWith("Bearer ")) token = auth.slice(7);
   // Fallback to cookie
   if (!token) {
     try {
-      token = req.cookies.get("earn_token")?.value || null;
+      token = req.cookies.get("earn_token")?.value ?? null;
     } catch {
       token = null;
     }

@@ -889,11 +889,21 @@ function AdminTasks() {
     durationMin: 1,
     link: "",
     availability: 1000,
+    hidden: false,
+    startTime: "",
+    endTime: "",
   });
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    addTask({ ...form, status: "active", link: form.link || "#" });
+    addTask({
+      ...form,
+      status: "active",
+      link: form.link || "#",
+      hidden: form.hidden,
+      startTime: form.startTime || undefined,
+      endTime: form.endTime || undefined,
+    });
     toast.success("Task added");
     setOpen(false);
     setForm({
@@ -904,6 +914,9 @@ function AdminTasks() {
       durationMin: 1,
       link: "",
       availability: 1000,
+      hidden: false,
+      startTime: "",
+      endTime: "",
     });
   };
 
@@ -1105,6 +1118,39 @@ function AdminTasks() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="tstart">Open Date</Label>
+                <Input
+                  id="tstart"
+                  type="datetime-local"
+                  value={form.startTime}
+                  onChange={(e) =>
+                    setForm({ ...form, startTime: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tend">Close Date</Label>
+                <Input
+                  id="tend"
+                  type="datetime-local"
+                  value={form.endTime}
+                  onChange={(e) =>
+                    setForm({ ...form, endTime: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                id="thide"
+                type="checkbox"
+                checked={form.hidden}
+                onChange={(e) => setForm({ ...form, hidden: e.target.checked })}
+              />
+              <Label htmlFor="thide">Hide task until scheduled open time</Label>
+            </div>
             <DialogFooter>
               <Button type="submit">Add Task</Button>
             </DialogFooter>
@@ -1291,6 +1337,7 @@ function AdminEvents() {
     startTime: "",
     endTime: "",
     rules: "",
+    hidden: false,
   });
 
   const submit = (e: React.FormEvent) => {
@@ -1306,6 +1353,7 @@ function AdminEvents() {
       endTime: new Date(form.endTime).toISOString(),
       rules: form.rules.split("\n").filter(Boolean),
       status: new Date(form.startTime) > new Date() ? "upcoming" : "live",
+      hidden: form.hidden,
     });
     toast.success("Event created");
     setOpen(false);
@@ -1317,6 +1365,7 @@ function AdminEvents() {
       startTime: "",
       endTime: "",
       rules: "",
+      hidden: false,
     });
   };
 
@@ -1476,6 +1525,15 @@ function AdminEvents() {
                 placeholder="Complete 10 tasks&#10;Refer at least 1 friend"
               />
             </div>
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                id="ehide"
+                type="checkbox"
+                checked={form.hidden}
+                onChange={(e) => setForm({ ...form, hidden: e.target.checked })}
+              />
+              <Label htmlFor="ehide">Hide event until scheduled start</Label>
+            </div>
             <DialogFooter>
               <Button type="submit">Create Event</Button>
             </DialogFooter>
@@ -1498,6 +1556,7 @@ function AdminRooms() {
     rewardPoints: 100,
     startTime: "",
     endTime: "",
+    hidden: false,
   });
 
   // Seat counts per level
@@ -1539,6 +1598,7 @@ function AdminRooms() {
       startTime: new Date(form.startTime).toISOString(),
       endTime: new Date(form.endTime).toISOString(),
       status: "open",
+      hidden: form.hidden,
     });
     toast.success("Room created");
     setOpen(false);
@@ -1551,6 +1611,7 @@ function AdminRooms() {
       rewardPoints: 100,
       startTime: "",
       endTime: "",
+      hidden: false,
     });
   };
 
@@ -1771,6 +1832,15 @@ function AdminRooms() {
                   }
                 />
               </div>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                id="rhide"
+                type="checkbox"
+                checked={form.hidden}
+                onChange={(e) => setForm({ ...form, hidden: e.target.checked })}
+              />
+              <Label htmlFor="rhide">Hide room until scheduled open time</Label>
             </div>
             <DialogFooter>
               <Button type="submit">Create Room</Button>

@@ -406,6 +406,14 @@ export function QuizzesPage() {
   );
 }
 
+const isScheduledVisible = (start?: string, end?: string, hidden?: boolean) => {
+  if (hidden) return false;
+  const now = Date.now();
+  if (start && now < new Date(start).getTime()) return false;
+  if (end && now > new Date(end).getTime()) return false;
+  return true;
+};
+
 export function TasksPage() {
   const { tasks, completeTask, currentUserId } = useStore();
   const user = useCurrentUser();
@@ -415,6 +423,7 @@ export function TasksPage() {
   const filtered = tasks.filter((t) => {
     if (t.status !== "active") return false;
     if (filter !== "all" && t.type !== filter) return false;
+    if (!isScheduledVisible(t.startTime, t.endTime, t.hidden)) return false;
     return true;
   });
 
@@ -533,6 +542,8 @@ export function EventsPage() {
   const [tab, setTab] = useState("live");
 
   const filtered = events.filter((e) => {
+    if (e.hidden) return false;
+    if (!isScheduledVisible(e.startTime, e.endTime, e.hidden)) return false;
     if (tab === "all") return true;
     return e.status === tab;
   });
@@ -735,6 +746,9 @@ export function RoomsPage() {
   };
 
   const xpThresholds = [0, 500, 2000, 5000, 10000];
+  const visibleRooms = rooms.filter(
+    (r) => !r.hidden && isScheduledVisible(r.startTime, r.endTime, r.hidden),
+  );
   const userLevel = user?.roomLevel || 1;
   const userXP = user?.roomXP || 0;
   const nextLevelXP = userLevel < 5 ? xpThresholds[userLevel] : null;
@@ -843,7 +857,7 @@ export function RoomsPage() {
         animate="show"
         className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
       >
-        {rooms.map((r) => {
+        {visibleRooms.map((r) => {
           const joined = user ? r.participants.includes(user.id) : false;
           const meetsLevel = user ? userLevel >= r.level : false;
           const meetsXP = user ? userXP >= r.entryPoints : false;

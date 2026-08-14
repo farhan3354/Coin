@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/lib/store";
+import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -130,6 +131,8 @@ export function Navbar() {
     users,
     notifications,
   } = useStore();
+  const pathname = usePathname();
+  const currentView = pathname === "/" ? "home" : pathname.replace("/", "");
   const user = users.find((u) => u.id === currentUserId) || null;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -148,8 +151,11 @@ export function Navbar() {
   else if (user?.role === "business") nav = businessNav;
   else if (user) nav = userNav;
 
+  const router = useRouter();
+
   const go = (v: ViewKey) => {
-    setView(v);
+    if (v === "home") router.push("/");
+    else router.push(`/${v}`);
     setMobileOpen(false);
   };
 
@@ -406,7 +412,7 @@ export function Footer() {
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li>
               <button
-                onClick={() => setView("about")}
+                onClick={() => router.push("/about")}
                 className="hover:text-primary"
               >
                 About Us
@@ -414,7 +420,7 @@ export function Footer() {
             </li>
             <li>
               <button
-                onClick={() => setView("features")}
+                onClick={() => router.push("/features")}
                 className="hover:text-primary"
               >
                 Features
@@ -422,7 +428,7 @@ export function Footer() {
             </li>
             <li>
               <button
-                onClick={() => setView("how-it-works")}
+                onClick={() => router.push("/how-it-works")}
                 className="hover:text-primary"
               >
                 How It Works
@@ -430,7 +436,7 @@ export function Footer() {
             </li>
             <li>
               <button
-                onClick={() => setView("advertise")}
+                onClick={() => router.push("/advertise")}
                 className="hover:text-primary"
               >
                 Advertise
@@ -443,7 +449,7 @@ export function Footer() {
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li>
               <button
-                onClick={() => setView("contact")}
+                onClick={() => router.push("/contact")}
                 className="hover:text-primary"
               >
                 Contact
@@ -451,7 +457,7 @@ export function Footer() {
             </li>
             <li>
               <button
-                onClick={() => setView("faq")}
+                onClick={() => router.push("/faq")}
                 className="hover:text-primary"
               >
                 FAQ
@@ -459,7 +465,7 @@ export function Footer() {
             </li>
             <li>
               <button
-                onClick={() => setView("terms")}
+                onClick={() => router.push("/terms")}
                 className="hover:text-primary"
               >
                 Terms
@@ -467,7 +473,7 @@ export function Footer() {
             </li>
             <li>
               <button
-                onClick={() => setView("privacy")}
+                onClick={() => router.push("/privacy")}
                 className="hover:text-primary"
               >
                 Privacy Policy

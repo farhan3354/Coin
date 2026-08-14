@@ -753,7 +753,15 @@ export const useStore = create<EarnState>()(
 
       addTask: (t) => {
         const tempId = genId("t");
-        const tempTask = { ...t, id: tempId, completed: 0, createdAt: new Date().toISOString() } as any;
+        const tempTask = {
+          ...t,
+          id: tempId,
+          completed: 0,
+          hidden: !!t.hidden,
+          startTime: t.startTime || undefined,
+          endTime: t.endTime || undefined,
+          createdAt: new Date().toISOString(),
+        } as any;
         set((s) => ({ tasks: [tempTask, ...s.tasks] }));
 
         // Background sync to server — replace temp entry with server record on success
@@ -778,6 +786,7 @@ export const useStore = create<EarnState>()(
             {
               ...e,
               id: genId("e"),
+              hidden: !!e.hidden,
               participants: [],
               leaderboard: [],
               winners: [],
@@ -791,7 +800,7 @@ export const useStore = create<EarnState>()(
       addRoom: (r) =>
         set((s) => ({
           rooms: [
-            { ...r, id: genId("r"), participants: [], leaderboard: [] },
+            { ...r, id: genId("r"), hidden: !!r.hidden, participants: [], leaderboard: [] },
             ...s.rooms,
           ],
         })),

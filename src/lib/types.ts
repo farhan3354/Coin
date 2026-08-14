@@ -117,6 +117,9 @@ export interface Task {
   availability: number; // how many can complete
   completed: number;
   status: "active" | "inactive";
+  hidden?: boolean;
+  startTime?: string;
+  endTime?: string;
   createdAt: string;
 }
 
@@ -140,6 +143,7 @@ export interface EventItem {
   startTime: string;
   endTime: string;
   status: "upcoming" | "live" | "completed" | "expired";
+  hidden?: boolean;
   participants: string[]; // user ids
   leaderboard: { userId: string; username: string; score: number }[];
   winners: { userId: string; username: string; prize: number }[];
@@ -160,6 +164,7 @@ export interface Room {
   leaderboard: { userId: string; username: string; score: number }[];
   startTime: string;
   endTime: string;
+  hidden?: boolean;
   status: "open" | "closed" | "completed";
 }
 

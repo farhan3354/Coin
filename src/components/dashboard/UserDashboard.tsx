@@ -37,6 +37,18 @@ import { formatPoints, formatUSD, formatDate } from "@/lib/mockData";
 import { toast } from "sonner";
 import type { ViewKey } from "@/lib/types";
 
+const isScheduledVisible = (
+  start?: string,
+  end?: string,
+  hidden?: boolean,
+) => {
+  if (hidden) return false;
+  const now = Date.now();
+  if (start && now < new Date(start).getTime()) return false;
+  if (end && now > new Date(end).getTime()) return false;
+  return true;
+};
+
 export function UserDashboard() {
   const user = useCurrentUser();
   const {
@@ -72,10 +84,16 @@ export function UserDashboard() {
     .reduce((s, h) => s + h.pointsEarned, 0);
 
   const myNotifs = notifications.filter((n) => n.userId === user.id);
-  const liveEvents = events.filter((e) => e.status === "live");
-  const openRooms = rooms.filter((r) => r.status === "open");
+  const liveEvents = events.filter(
+    (e) => e.status === "live" && !e.hidden && isScheduledVisible(e.startTime, e.endTime, e.hidden),
+  );
+  const openRooms = rooms.filter(
+    (r) => r.status === "open" && !r.hidden && isScheduledVisible(r.startTime, r.endTime, r.hidden),
+  );
   const recentVideos = videos.slice(0, 3);
-  const recentTasks = tasks.slice(0, 4);
+  const recentTasks = tasks.filter(
+    (t) => isScheduledVisible(t.startTime, t.endTime, t.hidden),
+  ).slice(0, 4);
 
   const referralLink = `${typeof window !== "undefined" ? window.location.origin : ""}/?ref=${user.referralCode}`;
 

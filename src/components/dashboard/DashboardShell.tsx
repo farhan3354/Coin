@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore, useCurrentUser } from "@/lib/store";
+import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -64,7 +65,6 @@ const navItems: NavItem[] = [
   },
   { key: "referrals", label: "Referrals", icon: Users, group: "account" },
   { key: "withdrawals", label: "Withdrawals", icon: Wallet, group: "account" },
-  { key: "buy-coins", label: "Buy Coins", icon: Coins, group: "account" },
   {
     key: "coin-history",
     label: "Coin History",
@@ -89,8 +89,10 @@ const groupLabels: Record<NavItem["group"], string> = {
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const user = useCurrentUser();
-  const { currentView, setView, logout, notifications, currentUserId } =
-    useStore();
+  const { logout, notifications, currentUserId } = useStore();
+  const router = useRouter();
+  const pathname = usePathname();
+  const currentView = pathname.replace("/", "");
 
   if (!user) return null;
 
@@ -158,7 +160,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                       <motion.button
                         key={item.key}
                         onClick={() => {
-                          setView(item.key);
+                          router.push(`/${item.key}`);
                           onNavigate?.();
                         }}
                         whileHover={{ x: 2 }}

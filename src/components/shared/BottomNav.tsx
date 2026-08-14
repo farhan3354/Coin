@@ -1,6 +1,7 @@
 "use client";
 
 import { useStore } from "@/lib/store";
+import { useRouter, usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -23,11 +24,13 @@ const bottomNavItems: { key: ViewKey; label: string; icon: typeof HomeIcon }[] =
     { key: "tasks", label: "Tasks", icon: ListChecks },
     { key: "dashboard", label: "Home", icon: HomeIcon },
     { key: "rooms", label: "Rooms", icon: Crown },
-    { key: "buy-coins", label: "Buy", icon: Wallet },
   ];
 
 export function BottomNav() {
-  const { currentView, setView, currentUserId } = useStore();
+  const { currentUserId } = useStore();
+  const router = useRouter();
+  const pathname = usePathname();
+  const currentView = pathname.replace("/", "");
 
   if (!currentUserId) return null;
 
@@ -44,7 +47,7 @@ export function BottomNav() {
           return (
             <button
               key={item.key}
-              onClick={() => setView(item.key)}
+              onClick={() => router.push(`/${item.key}`)}
               className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
                 isActive ? "text-primary" : "text-muted-foreground"
               }`}
