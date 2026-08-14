@@ -7,13 +7,31 @@ import { syncFromDatabase } from "@/lib/dbSync";
 import { Navbar, Footer } from "@/components/layout/Navbar";
 import { AuthModals } from "@/components/auth/AuthModals";
 import {
-  Home, About, Features, HowItWorks, Advertise, Contact, FAQ, Terms, Privacy,
+  Home,
+  About,
+  Features,
+  HowItWorks,
+  Advertise,
+  Contact,
+  FAQ,
+  Terms,
+  Privacy,
 } from "@/components/public/Pages";
 import { UserDashboard } from "@/components/dashboard/UserDashboard";
 import {
-  VideosPage, TasksPage, EventsPage, RoomsPage,
-  ReferralsPage, WithdrawalsPage, CoinHistoryPage, LeaderboardPage,
-  NotificationsPage, ProfilePage, GamesPage, BuyCoinsPage,
+  VideosPage,
+  QuizzesPage,
+  TasksPage,
+  EventsPage,
+  RoomsPage,
+  ReferralsPage,
+  WithdrawalsPage,
+  CoinHistoryPage,
+  LeaderboardPage,
+  NotificationsPage,
+  ProfilePage,
+  GamesPage,
+  BuyCoinsPage,
 } from "@/components/dashboard/Pages";
 import { ThemeCustomizer } from "@/components/dashboard/ThemeCustomizer";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
@@ -30,23 +48,45 @@ import type { ViewKey } from "@/lib/types";
 
 // Views that should be wrapped in the user dashboard sidebar layout
 const DASHBOARD_VIEWS: ViewKey[] = [
-  "dashboard", "videos", "tasks", "events", "rooms", "games", "referrals",
-  "withdrawals", "coin-history", "leaderboard", "notifications", "profile", "buy-coins", "theme",
+  "dashboard",
+  "videos",
+  "quizzes",
+  "tasks",
+  "events",
+  "rooms",
+  "games",
+  "referrals",
+  "withdrawals",
+  "coin-history",
+  "leaderboard",
+  "notifications",
+  "profile",
+  "buy-coins",
+  "theme",
 ];
 
 // Map view to component
 function renderView(view: ViewKey, user: ReturnType<typeof useCurrentUser>) {
   // Public views (no auth needed)
   switch (view) {
-    case "home": return <Home />;
-    case "about": return <About />;
-    case "features": return <Features />;
-    case "how-it-works": return <HowItWorks />;
-    case "advertise": return <Advertise />;
-    case "contact": return <Contact />;
-    case "faq": return <FAQ />;
-    case "terms": return <Terms />;
-    case "privacy": return <Privacy />;
+    case "home":
+      return <Home />;
+    case "about":
+      return <About />;
+    case "features":
+      return <Features />;
+    case "how-it-works":
+      return <HowItWorks />;
+    case "advertise":
+      return <Advertise />;
+    case "contact":
+      return <Contact />;
+    case "faq":
+      return <FAQ />;
+    case "terms":
+      return <Terms />;
+    case "privacy":
+      return <Privacy />;
   }
 
   // Protected views (require auth)
@@ -58,7 +98,11 @@ function renderView(view: ViewKey, user: ReturnType<typeof useCurrentUser>) {
   if (view === "admin" && user.role !== "admin") {
     return <RequireRole role="admin" />;
   }
-  if (view === "business" && user.role !== "business" && user.role !== "admin") {
+  if (
+    view === "business" &&
+    user.role !== "business" &&
+    user.role !== "admin"
+  ) {
     return <RequireRole role="business" />;
   }
 
@@ -66,42 +110,92 @@ function renderView(view: ViewKey, user: ReturnType<typeof useCurrentUser>) {
   if (DASHBOARD_VIEWS.includes(view) && user.role === "user") {
     let page: React.ReactNode = null;
     switch (view) {
-      case "dashboard": page = <UserDashboard />; break;
-      case "videos": page = <VideosPage />; break;
-      case "tasks": page = <TasksPage />; break;
-      case "events": page = <EventsPage />; break;
-      case "rooms": page = <RoomsPage />; break;
-      case "games": page = <GamesPage />; break;
-      case "referrals": page = <ReferralsPage />; break;
-      case "withdrawals": page = <WithdrawalsPage />; break;
-      case "coin-history": page = <CoinHistoryPage />; break;
-      case "leaderboard": page = <LeaderboardPage />; break;
-      case "notifications": page = <NotificationsPage />; break;
-      case "profile": page = <ProfilePage />; break;
-      case "buy-coins": page = <BuyCoinsPage />; break;
-      case "theme": page = <ThemeCustomizer />; break;
+      case "dashboard":
+        page = <UserDashboard />;
+        break;
+      case "videos":
+        page = <VideosPage />;
+        break;
+      case "quizzes":
+        page = <QuizzesPage />;
+        break;
+      case "tasks":
+        page = <TasksPage />;
+        break;
+      case "events":
+        page = <EventsPage />;
+        break;
+      case "rooms":
+        page = <RoomsPage />;
+        break;
+      case "games":
+        page = <GamesPage />;
+        break;
+      case "referrals":
+        page = <ReferralsPage />;
+        break;
+      case "withdrawals":
+        page = <WithdrawalsPage />;
+        break;
+      case "coin-history":
+        page = <CoinHistoryPage />;
+        break;
+      case "leaderboard":
+        page = <LeaderboardPage />;
+        break;
+      case "notifications":
+        page = <NotificationsPage />;
+        break;
+      case "profile":
+        page = <ProfilePage />;
+        break;
+      case "buy-coins":
+        page = <BuyCoinsPage />;
+        break;
+      case "theme":
+        page = <ThemeCustomizer />;
+        break;
     }
     return <DashboardShell>{page}</DashboardShell>;
   }
 
   switch (view) {
-    case "dashboard": return <UserDashboard />;
-    case "videos": return <VideosPage />;
-    case "tasks": return <TasksPage />;
-    case "events": return <EventsPage />;
-    case "rooms": return <RoomsPage />;
-    case "games": return <GamesPage />;
-    case "referrals": return <ReferralsPage />;
-    case "withdrawals": return <WithdrawalsPage />;
-    case "coin-history": return <CoinHistoryPage />;
-    case "leaderboard": return <LeaderboardPage />;
-    case "notifications": return <NotificationsPage />;
-    case "profile": return <ProfilePage />;
-    case "buy-coins": return <BuyCoinsPage />;
-    case "theme": return <ThemeCustomizer />;
-    case "admin": return <AdminDashboard />;
-    case "business": return <BusinessDashboard />;
-    default: return <Home />;
+    case "dashboard":
+      return <UserDashboard />;
+    case "videos":
+      return <VideosPage />;
+    case "quizzes":
+      return <QuizzesPage />;
+    case "tasks":
+      return <TasksPage />;
+    case "events":
+      return <EventsPage />;
+    case "rooms":
+      return <RoomsPage />;
+    case "games":
+      return <GamesPage />;
+    case "referrals":
+      return <ReferralsPage />;
+    case "withdrawals":
+      return <WithdrawalsPage />;
+    case "coin-history":
+      return <CoinHistoryPage />;
+    case "leaderboard":
+      return <LeaderboardPage />;
+    case "notifications":
+      return <NotificationsPage />;
+    case "profile":
+      return <ProfilePage />;
+    case "buy-coins":
+      return <BuyCoinsPage />;
+    case "theme":
+      return <ThemeCustomizer />;
+    case "admin":
+      return <AdminDashboard />;
+    case "business":
+      return <BusinessDashboard />;
+    default:
+      return <Home />;
   }
 }
 
@@ -113,10 +207,14 @@ function RequireAuth() {
         <Lock className="w-8 h-8" />
       </div>
       <h1 className="text-2xl font-bold mb-2">Login required</h1>
-      <p className="text-muted-foreground mb-6">You need to be logged in to view this page.</p>
+      <p className="text-muted-foreground mb-6">
+        You need to be logged in to view this page.
+      </p>
       <div className="flex gap-2 justify-center">
         <Button onClick={() => openAuth("login")}>Login</Button>
-        <Button variant="outline" onClick={() => setView("home")}>Back to Home</Button>
+        <Button variant="outline" onClick={() => setView("home")}>
+          Back to Home
+        </Button>
       </div>
     </div>
   );
@@ -130,10 +228,22 @@ function RequireRole({ role }: { role: string }) {
         <Lock className="w-8 h-8" />
       </div>
       <h1 className="text-2xl font-bold mb-2">Access denied</h1>
-      <p className="text-muted-foreground mb-6">You don&apos;t have permission to view this page. This area is for {role} accounts only.</p>
+      <p className="text-muted-foreground mb-6">
+        You don&apos;t have permission to view this page. This area is for{" "}
+        {role} accounts only.
+      </p>
       <div className="flex gap-2 justify-center">
-        <Button variant="outline" onClick={() => setView("home")}>Back to Home</Button>
-        <Button variant="outline" onClick={() => { logout(); }}>Logout</Button>
+        <Button variant="outline" onClick={() => setView("home")}>
+          Back to Home
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            logout();
+          }}
+        >
+          Logout
+        </Button>
       </div>
     </div>
   );
@@ -150,12 +260,14 @@ export default function Page() {
     }
   }, [dbLoaded]);
 
-  // Check for ?watch=VIDEO_ID URL parameter (video opened in new tab) — lazy init
-  const [watchVideoId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
+  // Check for ?watch=VIDEO_ID URL parameter (video opened in new tab) — detect on client after mount
+  const [watchVideoId, setWatchVideoId] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    return params.get("watch");
-  });
+    const id = params.get("watch");
+    setWatchVideoId(id);
+  }, []);
 
   // Handle referral code in URL on first load
   useEffect(() => {
@@ -177,6 +289,7 @@ export default function Page() {
   }, [currentUserId, openAuth, watchVideoId]);
 
   // If this is a video watch page (new tab), render only the watch page — no navbar/footer
+  // Note: `watchVideoId` is set after mount to avoid SSR/CSR hydration mismatch.
   if (watchVideoId) {
     return <VideoWatchPage videoId={watchVideoId} />;
   }
@@ -185,7 +298,11 @@ export default function Page() {
   if (!dbLoaded) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background">
-        <img src="/logo.png" alt="EarnCoin" className="w-20 h-20 rounded-full object-cover animate-pulse mb-4" />
+        <img
+          src="/logo.png"
+          alt="EarnCoin"
+          className="w-20 h-20 rounded-full object-cover animate-pulse mb-4"
+        />
         <p className="text-muted-foreground">Loading EarnCoin...</p>
       </div>
     );

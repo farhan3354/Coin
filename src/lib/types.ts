@@ -16,6 +16,7 @@ export type ViewKey =
   | "register"
   | "dashboard"
   | "videos"
+  | "quizzes"
   | "tasks"
   | "events"
   | "rooms"

@@ -23,6 +23,14 @@ const EMPTY_STATS = {
 
 export async function GET() {
   try {
+    const shouldUseDb = process.env.ENABLE_DB === "true" && !!process.env.DATABASE_URL;
+    if (!shouldUseDb) {
+      return NextResponse.json(
+        { ...EMPTY_STATS, _dbError: true, _errorMessage: "Database is disabled in this environment." },
+        { status: 200 }
+      );
+    }
+
     // Run all queries in parallel with a timeout
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("DB timeout")), 25000)

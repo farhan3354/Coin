@@ -15,6 +15,9 @@ export async function syncFromDatabase(): Promise<void> {
     if (!res.ok) return;
     const data = await res.json();
 
+    const quizRes = await fetch("/api/quizzes").catch(() => null);
+    const quizzes = quizRes && quizRes.ok ? await quizRes.json() : [];
+
     // Transform DB records to app types
     const users: User[] = (data.users || []).map((u: any) => ({
       id: u.id, fullName: u.fullName, username: u.username, email: u.email,
@@ -132,6 +135,7 @@ export async function syncFromDatabase(): Promise<void> {
     useStore.setState({
       users, videos, tasks, events, rooms, withdrawals, coinHistory,
       notifications, campaigns, officialLinks, videoWatches, gameResults,
+      quizzes: Array.isArray(quizzes) ? quizzes : [],
       settings, emailLogs: (data.emailLogs || []).map((e: any) => ({
         id: e.id, to: e.to, toName: e.toName, subject: e.subject,
         body: e.body, type: e.type, sentAt: e.sentAt, status: e.status,

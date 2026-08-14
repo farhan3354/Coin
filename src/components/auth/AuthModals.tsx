@@ -14,15 +14,48 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import { Coins, Eye, EyeOff, Shield, Smartphone, Fingerprint, RotateCcw, Mail, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import {
+  Coins,
+  Eye,
+  EyeOff,
+  Shield,
+  Smartphone,
+  Fingerprint,
+  RotateCcw,
+  Mail,
+  ArrowLeft,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 const countries = [
-  "United States", "United Kingdom", "Pakistan", "India", "Bangladesh",
-  "United Arab Emirates", "Nigeria", "Philippines", "Kenya", "Indonesia",
-  "Malaysia", "Turkey", "Egypt", "Saudi Arabia", "Canada", "Australia",
-  "Germany", "France", "Brazil", "Mexico", "Other",
+  "United States",
+  "United Kingdom",
+  "Pakistan",
+  "India",
+  "Bangladesh",
+  "United Arab Emirates",
+  "Nigeria",
+  "Philippines",
+  "Kenya",
+  "Indonesia",
+  "Malaysia",
+  "Turkey",
+  "Egypt",
+  "Saudi Arabia",
+  "Canada",
+  "Australia",
+  "Germany",
+  "France",
+  "Brazil",
+  "Mexico",
+  "Other",
 ];
 
 // Helper: map DB user to store-compatible user object
@@ -60,7 +93,16 @@ function mapDbUser(u: any) {
 }
 
 export function AuthModals() {
-  const { authModal, closeAuth, openAuth, register, login, verifyOtp, forgotPassword, setView } = useStore();
+  const {
+    authModal,
+    closeAuth,
+    openAuth,
+    register,
+    login,
+    verifyOtp,
+    forgotPassword,
+    setView,
+  } = useStore();
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -91,7 +133,9 @@ export function AuthModals() {
 
   // forgot password states
   const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotStep, setForgotStep] = useState<"email" | "code" | "newpass">("email");
+  const [forgotStep, setForgotStep] = useState<"email" | "code" | "newpass">(
+    "email",
+  );
   const [forgotUserId, setForgotUserId] = useState("");
   const [resetCode, setResetCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -114,6 +158,7 @@ export function AuthModals() {
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginEmail, password: loginPwd }),
       });
@@ -126,7 +171,9 @@ export function AuthModals() {
           setPendingEmailLocal(data.email || loginEmail);
           useStore.setState({ pendingEmail: data.email || loginEmail });
           openAuth("otp");
-          toast.info("Please verify your email first. A new code has been sent.");
+          toast.info(
+            "Please verify your email first. A new code has been sent.",
+          );
           return;
         }
         setError(data.message);
@@ -137,7 +184,11 @@ export function AuthModals() {
           const currentState = useStore.getState();
           const exists = currentState.users.find((u) => u.id === dbUser.id);
           if (exists) {
-            useStore.setState({ users: currentState.users.map((u) => u.id === dbUser.id ? dbUser : u) });
+            useStore.setState({
+              users: currentState.users.map((u) =>
+                u.id === dbUser.id ? dbUser : u,
+              ),
+            });
           } else {
             useStore.setState({ users: [...currentState.users, dbUser] });
           }
@@ -145,8 +196,10 @@ export function AuthModals() {
             currentUserId: dbUser.id,
             authModal: null,
           });
-          if (dbUser.role === "admin") useStore.setState({ currentView: "admin" });
-          else if (dbUser.role === "business") useStore.setState({ currentView: "business" });
+          if (dbUser.role === "admin")
+            useStore.setState({ currentView: "admin" });
+          else if (dbUser.role === "business")
+            useStore.setState({ currentView: "business" });
           else useStore.setState({ currentView: "dashboard" });
         } else {
           // Fallback: local store login
@@ -196,7 +249,9 @@ export function AuthModals() {
 
     setLoading(true);
     const fullName = `${reg.firstName} ${reg.lastName}`;
-    const username = (reg.firstName + reg.lastName).toLowerCase().replace(/[^a-z0-9]/g, "");
+    const username = (reg.firstName + reg.lastName)
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
 
     try {
       const res = await fetch("/api/auth/register", {
@@ -220,7 +275,9 @@ export function AuthModals() {
         setPendingEmailLocal(data.email || reg.email);
         useStore.setState({ pendingEmail: data.email || reg.email });
         openAuth("otp");
-        toast.info("Account already exists! A new OTP has been sent to your email.");
+        toast.info(
+          "Account already exists! A new OTP has been sent to your email.",
+        );
         return;
       }
 
@@ -236,9 +293,13 @@ export function AuthModals() {
       openAuth("otp");
 
       if (data.sent === false) {
-        toast.warning("Account created! However, the email could not be sent. Use Resend Code to try again.");
+        toast.warning(
+          "Account created! However, the email could not be sent. Use Resend Code to try again.",
+        );
       } else {
-        toast.success("Account created! A verification code has been sent to your email.");
+        toast.success(
+          "Account created! A verification code has been sent to your email.",
+        );
       }
     } catch {
       setLoading(false);
@@ -288,7 +349,9 @@ export function AuthModals() {
         setLoading(false);
 
         if (!data.ok) {
-          setError(data.message || "Invalid or expired code. Please try again.");
+          setError(
+            data.message || "Invalid or expired code. Please try again.",
+          );
           return;
         }
 
@@ -303,7 +366,7 @@ export function AuthModals() {
 
           // Add welcome notification & coin history if not already present
           const alreadyHasBonus = latest.coinHistory.some(
-            (h) => h.userId === dbUser.id && h.activity === "Welcome Bonus"
+            (h) => h.userId === dbUser.id && h.activity === "Welcome Bonus",
           );
           const newHistory = alreadyHasBonus
             ? latest.coinHistory
@@ -321,7 +384,7 @@ export function AuthModals() {
                 ...latest.coinHistory,
               ];
           const alreadyHasNotif = latest.notifications.some(
-            (n) => n.userId === dbUser.id && n.title === "Welcome to EarnCoin!"
+            (n) => n.userId === dbUser.id && n.title === "Welcome to EarnCoin!",
           );
           const newNotifs = alreadyHasNotif
             ? latest.notifications
@@ -409,7 +472,10 @@ export function AuthModals() {
     setResendCooldown(60);
     const interval = setInterval(() => {
       setResendCooldown((c) => {
-        if (c <= 1) { clearInterval(interval); return 0; }
+        if (c <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
         return c - 1;
       });
     }, 1000);
@@ -439,7 +505,10 @@ export function AuthModals() {
       setLoading(false);
       const r = forgotPassword(forgotEmail);
       if (!r.ok) setError(r.message);
-      else { toast.success(r.message); setForgotStep("code"); }
+      else {
+        toast.success(r.message);
+        setForgotStep("code");
+      }
     }
   };
 
@@ -456,14 +525,24 @@ export function AuthModals() {
   const handleForgotSubmitNewPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (newPassword.length < 6) { setError("Password must be at least 6 characters"); return; }
-    if (newPassword !== confirmNewPassword) { setError("Passwords do not match"); return; }
+    if (newPassword.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setError("Passwords do not match");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: forgotUserId, code: resetCode, newPassword }),
+        body: JSON.stringify({
+          userId: forgotUserId,
+          code: resetCode,
+          newPassword,
+        }),
       });
       const data = await res.json();
       setLoading(false);
@@ -489,7 +568,10 @@ export function AuthModals() {
   return (
     <>
       {/* ── Login ── */}
-      <Dialog open={authModal === "login"} onOpenChange={(o) => !o && closeAuth()}>
+      <Dialog
+        open={authModal === "login"}
+        onOpenChange={(o) => !o && closeAuth()}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="flex items-center gap-2 mb-2">
@@ -498,25 +580,59 @@ export function AuthModals() {
               </span>
               <DialogTitle>Welcome back</DialogTitle>
             </div>
-            <DialogDescription>Login to your EarnCoin account to continue earning.</DialogDescription>
+            <DialogDescription>
+              Login to your EarnCoin account to continue earning.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleLogin} className="space-y-4">
-            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label htmlFor="lemail">Email</Label>
-              <Input id="lemail" type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="you@example.com" />
+              <Input
+                id="lemail"
+                type="email"
+                required
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="lpwd">Password</Label>
               <div className="relative">
-                <Input id="lpwd" type={showPwd ? "text" : "password"} required value={loginPwd} onChange={(e) => setLoginPwd(e.target.value)} placeholder="••••••••" />
-                <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                <Input
+                  id="lpwd"
+                  type={showPwd ? "text" : "password"}
+                  required
+                  value={loginPwd}
+                  onChange={(e) => setLoginPwd(e.target.value)}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPwd(!showPwd)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                >
+                  {showPwd ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             </div>
             <div className="flex justify-end">
-              <button type="button" onClick={() => openAuth("forgot")} className="text-xs text-primary hover:underline">Forgot password?</button>
+              <button
+                type="button"
+                onClick={() => openAuth("forgot")}
+                className="text-xs text-primary hover:underline"
+              >
+                Forgot password?
+              </button>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
@@ -524,13 +640,21 @@ export function AuthModals() {
           </form>
           <div className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <button onClick={() => openAuth("register")} className="text-primary hover:underline font-medium">Register</button>
+            <button
+              onClick={() => openAuth("register")}
+              className="text-primary hover:underline font-medium"
+            >
+              Register
+            </button>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* ── Register ── */}
-      <Dialog open={authModal === "register"} onOpenChange={(o) => !o && closeAuth()}>
+      <Dialog
+        open={authModal === "register"}
+        onOpenChange={(o) => !o && closeAuth()}
+      >
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-2 mb-2">
@@ -539,41 +663,99 @@ export function AuthModals() {
               </span>
               <DialogTitle>Create your account</DialogTitle>
             </div>
-            <DialogDescription>Join EarnCoin and get 150 welcome bonus points after verification.</DialogDescription>
+            <DialogDescription>
+              Join EarnCoin and get 150 welcome bonus points after verification.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleRegister} className="space-y-3">
-            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="firstname">First Name</Label>
-                <Input id="firstname" required value={reg.firstName} onChange={(e) => setReg({ ...reg, firstName: e.target.value })} placeholder="John" />
+                <Input
+                  id="firstname"
+                  required
+                  value={reg.firstName}
+                  onChange={(e) =>
+                    setReg({ ...reg, firstName: e.target.value })
+                  }
+                  placeholder="John"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastname">Last Name</Label>
-                <Input id="lastname" required value={reg.lastName} onChange={(e) => setReg({ ...reg, lastName: e.target.value })} placeholder="Doe" />
+                <Input
+                  id="lastname"
+                  required
+                  value={reg.lastName}
+                  onChange={(e) => setReg({ ...reg, lastName: e.target.value })}
+                  placeholder="Doe"
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="remail">Email</Label>
-              <Input id="remail" type="email" required value={reg.email} onChange={(e) => setReg({ ...reg, email: e.target.value })} placeholder="you@example.com" />
+              <Input
+                id="remail"
+                type="email"
+                required
+                value={reg.email}
+                onChange={(e) => setReg({ ...reg, email: e.target.value })}
+                placeholder="you@example.com"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="rphone">Phone Number</Label>
-              <Input id="rphone" type="tel" required value={reg.phone} onChange={(e) => setReg({ ...reg, phone: e.target.value })} placeholder="+92 300 1234567" />
+              <Input
+                id="rphone"
+                type="tel"
+                required
+                value={reg.phone}
+                onChange={(e) => setReg({ ...reg, phone: e.target.value })}
+                placeholder="+92 300 1234567"
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="rpwd">Password</Label>
                 <div className="relative">
-                  <Input id="rpwd" type={showPwd ? "text" : "password"} required value={reg.password} onChange={(e) => setReg({ ...reg, password: e.target.value })} placeholder="••••••••" />
-                  <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <Input
+                    id="rpwd"
+                    type={showPwd ? "text" : "password"}
+                    required
+                    value={reg.password}
+                    onChange={(e) =>
+                      setReg({ ...reg, password: e.target.value })
+                    }
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd(!showPwd)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showPwd ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="rconfirm">Confirm Password</Label>
-                <Input id="rconfirm" type={showPwd ? "text" : "password"} required value={reg.confirm} onChange={(e) => setReg({ ...reg, confirm: e.target.value })} placeholder="••••••••" />
+                <Input
+                  id="rconfirm"
+                  type={showPwd ? "text" : "password"}
+                  required
+                  value={reg.confirm}
+                  onChange={(e) => setReg({ ...reg, confirm: e.target.value })}
+                  placeholder="••••••••"
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -587,18 +769,41 @@ export function AuthModals() {
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <option value="">Select country</option>
-                  {countries.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {countries.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ref">Referral Code (Optional)</Label>
-                <Input id="ref" value={reg.referralCode} onChange={(e) => setReg({ ...reg, referralCode: e.target.value.toUpperCase() })} placeholder="ERN934X" />
+                <Input
+                  id="ref"
+                  value={reg.referralCode}
+                  onChange={(e) =>
+                    setReg({
+                      ...reg,
+                      referralCode: e.target.value.toUpperCase(),
+                    })
+                  }
+                  placeholder="ERN934X"
+                />
               </div>
             </div>
             <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 text-xs text-muted-foreground">
-              <div className="flex items-center gap-2"><Shield className="w-3.5 h-3.5" /> One device = one account (fingerprint enforced)</div>
-              <div className="flex items-center gap-2"><Fingerprint className="w-3.5 h-3.5" /> Duplicate and fake accounts are blocked</div>
-              <div className="flex items-center gap-2"><Smartphone className="w-3.5 h-3.5" /> Email &amp; OTP verification required</div>
+              <div className="flex items-center gap-2">
+                <Shield className="w-3.5 h-3.5" /> One device = one account
+                (fingerprint enforced)
+              </div>
+              <div className="flex items-center gap-2">
+                <Fingerprint className="w-3.5 h-3.5" /> Duplicate and fake
+                accounts are blocked
+              </div>
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-3.5 h-3.5" /> Email &amp; OTP
+                verification required
+              </div>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Creating account..." : "Create Account"}
@@ -606,13 +811,21 @@ export function AuthModals() {
           </form>
           <div className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <button onClick={() => openAuth("login")} className="text-primary hover:underline font-medium">Login</button>
+            <button
+              onClick={() => openAuth("login")}
+              className="text-primary hover:underline font-medium"
+            >
+              Login
+            </button>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* ── OTP Verification ── */}
-      <Dialog open={authModal === "otp"} onOpenChange={(o) => !o && closeAuth()}>
+      <Dialog
+        open={authModal === "otp"}
+        onOpenChange={(o) => !o && closeAuth()}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <div className="flex items-center gap-2 mb-1">
@@ -641,7 +854,14 @@ export function AuthModals() {
             )}
 
             <div className="flex justify-center py-2">
-              <InputOTP maxLength={6} value={otp} onChange={(v) => { setOtp(v); setError(""); }}>
+              <InputOTP
+                maxLength={6}
+                value={otp}
+                onChange={(v) => {
+                  setOtp(v);
+                  setError("");
+                }}
+              >
                 <InputOTPGroup>
                   <InputOTPSlot index={0} />
                   <InputOTPSlot index={1} />
@@ -653,9 +873,18 @@ export function AuthModals() {
               </InputOTP>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading || otp.length !== 6}>
-              {loading ? "Verifying..." : (
-                <><CheckCircle2 className="w-4 h-4 mr-2" /> Verify &amp; Continue</>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || otp.length !== 6}
+            >
+              {loading ? (
+                "Verifying..."
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-2" /> Verify &amp;
+                  Continue
+                </>
               )}
             </Button>
           </form>
@@ -663,7 +892,9 @@ export function AuthModals() {
           {/* Resend + Back */}
           <div className="space-y-3">
             <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-2">Didn&apos;t receive the code?</p>
+              <p className="text-sm text-muted-foreground mb-2">
+                Didn&apos;t receive the code?
+              </p>
               <Button
                 variant="outline"
                 size="sm"
@@ -672,12 +903,16 @@ export function AuthModals() {
                 className="gap-2"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
+                {resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : "Resend Code"}
               </Button>
             </div>
 
             <div className="text-center border-t pt-3">
-              <p className="text-xs text-muted-foreground mb-2">Wrong email? Go back and register again.</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Wrong email? Go back and register again.
+              </p>
               <Button
                 variant="ghost"
                 size="sm"
@@ -696,7 +931,10 @@ export function AuthModals() {
       </Dialog>
 
       {/* ── Forgot Password (multi-step) ── */}
-      <Dialog open={authModal === "forgot"} onOpenChange={(o) => !o && closeAuth()}>
+      <Dialog
+        open={authModal === "forgot"}
+        onOpenChange={(o) => !o && closeAuth()}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
@@ -705,18 +943,31 @@ export function AuthModals() {
               {forgotStep === "newpass" && "Create new password"}
             </DialogTitle>
             <DialogDescription>
-              {forgotStep === "email" && "Enter your email and we'll send you a reset code."}
-              {forgotStep === "code" && "We've sent a 6-digit code to your email. Enter it below."}
+              {forgotStep === "email" &&
+                "Enter your email and we'll send you a reset code."}
+              {forgotStep === "code" &&
+                "We've sent a 6-digit code to your email. Enter it below."}
               {forgotStep === "newpass" && "Enter your new password below."}
             </DialogDescription>
           </DialogHeader>
 
           {forgotStep === "email" && (
             <form onSubmit={handleForgotSubmitEmail} className="space-y-4">
-              {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="femail">Email</Label>
-                <Input id="femail" type="email" required value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} placeholder="you@example.com" />
+                <Input
+                  id="femail"
+                  type="email"
+                  required
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="you@example.com"
+                />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 <Mail className="w-4 h-4 mr-2" />
@@ -727,9 +978,17 @@ export function AuthModals() {
 
           {forgotStep === "code" && (
             <form onSubmit={handleForgotSubmitCode} className="space-y-4">
-              {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
               <div className="flex justify-center">
-                <InputOTP maxLength={6} value={resetCode} onChange={(v) => setResetCode(v)}>
+                <InputOTP
+                  maxLength={6}
+                  value={resetCode}
+                  onChange={(v) => setResetCode(v)}
+                >
                   <InputOTPGroup>
                     <InputOTPSlot index={0} />
                     <InputOTPSlot index={1} />
@@ -740,11 +999,22 @@ export function AuthModals() {
                   </InputOTPGroup>
                 </InputOTP>
               </div>
-              <Button type="submit" className="w-full" disabled={resetCode.length !== 6}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={resetCode.length !== 6}
+              >
                 Verify Code
               </Button>
               <div className="text-center">
-                <Button variant="ghost" size="sm" onClick={() => { setForgotStep("email"); setError(""); }}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setForgotStep("email");
+                    setError("");
+                  }}
+                >
                   ← Back to email
                 </Button>
               </div>
@@ -752,20 +1022,51 @@ export function AuthModals() {
           )}
 
           {forgotStep === "newpass" && (
-            <form onSubmit={handleForgotSubmitNewPassword} className="space-y-4">
-              {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+            <form
+              onSubmit={handleForgotSubmitNewPassword}
+              className="space-y-4"
+            >
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="fnewpwd">New Password</Label>
                 <div className="relative">
-                  <Input id="fnewpwd" type={showPwd ? "text" : "password"} required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" minLength={6} />
-                  <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <Input
+                    id="fnewpwd"
+                    type={showPwd ? "text" : "password"}
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd(!showPwd)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showPwd ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="fconfirmpwd">Confirm New Password</Label>
-                <Input id="fconfirmpwd" type={showPwd ? "text" : "password"} required value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} placeholder="••••••••" minLength={6} />
+                <Input
+                  id="fconfirmpwd"
+                  type={showPwd ? "text" : "password"}
+                  required
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  minLength={6}
+                />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Resetting..." : "Reset Password"}
@@ -775,7 +1076,12 @@ export function AuthModals() {
 
           <div className="text-center text-sm text-muted-foreground">
             Remember your password?{" "}
-            <button onClick={() => openAuth("login")} className="text-primary hover:underline font-medium">Login</button>
+            <button
+              onClick={() => openAuth("login")}
+              className="text-primary hover:underline font-medium"
+            >
+              Login
+            </button>
           </div>
         </DialogContent>
       </Dialog>

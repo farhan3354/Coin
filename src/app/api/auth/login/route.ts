@@ -2,13 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
 import { sendEmail, otpEmailTemplate, generateOTP } from "@/lib/email";
+import { createAuthTokenForUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   const { email, password } = await req.json();
 
-  const user = await db.user.findFirst({
-    where: { email: { equals: email, mode: "insensitive" } },
-  });
+  let user;
+  try {
+    user = await db.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+    });
+  } catch (err) {
+    // Database unreachable — return a friendly 503 so client can fallback to offline/local mode
+    return NextResponse.json({ ok: false, message: "Database unavailable. Try offline mode." }, { status: 503 });
+  }
 
   if (!user) {
     return NextResponse.json(
@@ -70,5 +77,9 @@ export async function POST(req: NextRequest) {
     data: { lastLogin: new Date() },
   });
 
-  return NextResponse.json({ ok: true, user: updated });
+  const token = createAuthTokenForUser({ id: updated.id, role: updated.role });
+  const res = NextResponse.json({ ok: true, user: updated });
+  // Set httpOnly cookie
+  res.cookies.set({ name: "earn_token", value: token, httpOnly: true, path: "/", maxAge: 60 * 60 * 24 * 7 });
+  return res;
 }

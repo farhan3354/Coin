@@ -57,6 +57,7 @@ interface EarnState {
   videoWatches: VideoWatch[];
   gameResults: GameResult[];
   emailLogs: any[];
+  quizzes: any[];
   dbLoaded: boolean;
 
   // session
@@ -111,6 +112,11 @@ interface EarnState {
   deleteRoom: (id: string) => void;
   toggleUserStatus: (userId: string) => void;
 
+  // quizzes
+  addQuiz: (q: any) => void;
+  deleteQuiz: (id: string) => void;
+  submitQuiz: (quizId: string, answers: number[]) => { ok: boolean; message: string };
+
   // Official links — admin generates referral links for partners/teams
   createOfficialLink: (label: string, username: string) => { ok: boolean; message: string; link?: OfficialLink };
   deleteOfficialLink: (id: string) => void;
@@ -150,6 +156,7 @@ export const useStore = create<EarnState>()(
       videoWatches: [],
       gameResults: [],
       emailLogs: [],
+          quizzes: [],
       dbLoaded: false,
 
       currentUserId: null,
@@ -631,8 +638,15 @@ export const useStore = create<EarnState>()(
               ]
             : state.notifications,
         });
-        // Sync to database
-        fetch("/api/tasks/complete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.id, taskId }) }).catch(() => {});
+        // Sync to database — send auth cookie and update local store from server response
+        fetch("/api/tasks/complete", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ taskId }) })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data && data.ok && data.user) {
+              set((s) => ({ users: s.users.map((u) => (u.id === data.user.id ? data.user : u)), tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, completed: (t.completed || 0) + 1 } : t)) }));
+            }
+          })
+          .catch(() => {});
         return { ok: true, message: leveledUp ? `+${task.rewardPoints} points! Room Level Up to ${newLevel}!` : `+${task.rewardPoints} points earned!` };
       },
 
@@ -662,8 +676,15 @@ export const useStore = create<EarnState>()(
             ...state.coinHistory,
           ],
         });
-        // Sync to database
-        fetch("/api/videos/watch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.id, videoId }) }).catch(() => {});
+        // Sync to database — send auth cookie and update local store from server response
+        fetch("/api/videos/watch", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ videoId }) })
+          .then((r) => r.json())
+          .then((data) => {
+            if (data && data.ok && data.user) {
+              set((s) => ({ users: s.users.map((u) => (u.id === data.user.id ? data.user : u)) }));
+            }
+          })
+          .catch(() => {});
         return { ok: true, message: `+${video.rewardPoints} points earned!` };
       },
 
@@ -904,6 +925,39 @@ export const useStore = create<EarnState>()(
           return { ok: true, message: "Game completed!" };
         }
       },
+        // Quizzes
+        addQuiz: (q) => {
+          const tempId = genId("q");
+          const tempQuiz = { ...q, id: tempId, createdAt: new Date().toISOString() } as any;
+          set((s) => ({ quizzes: [tempQuiz, ...s.quizzes] }));
+          fetch("/api/quizzes", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(q) })
+            .then((r) => r.json())
+            .then((created) => {
+              if (created && created.id) set((s) => ({ quizzes: s.quizzes.map((qq) => (qq.id === tempId ? created : qq)) }));
+            })
+            .catch(() => {});
+        },
+        deleteQuiz: (id) => set((s) => ({ quizzes: s.quizzes.filter((q) => q.id !== id) })),
+        submitQuiz: (quizId, answers) => {
+          const state = get();
+          const user = state.users.find((u) => u.id === state.currentUserId);
+          if (!user) return { ok: false, message: "Not logged in" };
+          // optimistic local attempt: post to server and apply response
+          fetch("/api/quizzes/submit", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quizId, answers }) })
+            .then((r) => r.json())
+            .then((data) => {
+              if (data && data.ok) {
+                if (data.user) {
+                  set((s) => ({ users: s.users.map((u) => (u.id === data.user.id ? data.user : u)) }));
+                } else if (data.awarded) {
+                  // fallback: award locally
+                  set((s) => ({ users: s.users.map((u) => (u.id === user.id ? { ...u, points: u.points + data.awarded, dollarBalance: (u.points + data.awarded) / s.settings.pointsPerDollar } : u)) }));
+                }
+              }
+            })
+            .catch(() => {});
+          return { ok: true, message: "Submitted. Processing..." };
+        },
 
       // Email system
       sendEmail: (toUserId, type, templateData) => {

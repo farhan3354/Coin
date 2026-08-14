@@ -3,18 +3,28 @@
 import { useStore } from "@/lib/store";
 import { motion } from "framer-motion";
 import {
-  LayoutDashboard, Video, ListChecks, Trophy, Crown,
-  Wallet, Users, Home as HomeIcon, User as UserIcon
+  LayoutDashboard,
+  Video,
+  ListChecks,
+  Trophy,
+  Crown,
+  Wallet,
+  Users,
+  Home as HomeIcon,
+  User as UserIcon,
+  Brain,
 } from "lucide-react";
 import type { ViewKey } from "@/lib/types";
 
-const bottomNavItems: { key: ViewKey; label: string; icon: typeof HomeIcon }[] = [
-  { key: "videos", label: "Videos", icon: Video },
-  { key: "tasks", label: "Tasks", icon: ListChecks },
-  { key: "dashboard", label: "Home", icon: HomeIcon },
-  { key: "rooms", label: "Rooms", icon: Crown },
-  { key: "buy-coins", label: "Buy", icon: Wallet },
-];
+const bottomNavItems: { key: ViewKey; label: string; icon: typeof HomeIcon }[] =
+  [
+    { key: "videos", label: "Videos", icon: Video },
+    { key: "quizzes", label: "Quiz", icon: Brain },
+    { key: "tasks", label: "Tasks", icon: ListChecks },
+    { key: "dashboard", label: "Home", icon: HomeIcon },
+    { key: "rooms", label: "Rooms", icon: Crown },
+    { key: "buy-coins", label: "Buy", icon: Wallet },
+  ];
 
 export function BottomNav() {
   const { currentView, setView, currentUserId } = useStore();
@@ -39,10 +49,7 @@ export function BottomNav() {
                 isActive ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <motion.div
-                whileTap={{ scale: 0.85 }}
-                className="relative"
-              >
+              <motion.div whileTap={{ scale: 0.85 }} className="relative">
                 <item.icon className="w-5 h-5" />
                 {isActive && (
                   <motion.div
@@ -51,7 +58,9 @@ export function BottomNav() {
                   />
                 )}
               </motion.div>
-              <span className={`text-[10px] font-medium ${isActive ? "text-primary" : ""}`}>
+              <span
+                className={`text-[10px] font-medium ${isActive ? "text-primary" : ""}`}
+              >
                 {item.label}
               </span>
             </button>

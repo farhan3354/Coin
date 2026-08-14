@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getUserFromRequest } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
-  const { userId, gameName, gameType, entryFee, result } = await req.json();
-  const user = await db.user.findUnique({ where: { id: userId } });
-  if (!user) return NextResponse.json({ ok: false, message: "User not found" }, { status: 404 });
+  const user = await getUserFromRequest(req);
+  if (!user) return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
+  const { gameName, gameType, entryFee, result } = await req.json();
 
   let pointsChange = 0;
   if (gameType === "coin") {
@@ -15,9 +16,9 @@ export async function POST(req: NextRequest) {
 
   const newBalance = user.points + pointsChange;
   await db.$transaction([
-    db.user.update({ where: { id: userId }, data: { points: newBalance, dollarBalance: newBalance / 1000 } }),
-    db.gameResult.create({ data: { userId, username: user.username, gameName, gameType, entryFee, result, pointsChange } }),
-    ...(pointsChange !== 0 ? [db.coinHistory.create({ data: { userId, activity: `Game: ${gameName} (${result})`, pointsEarned: pointsChange > 0 ? pointsChange : 0, pointsDeducted: pointsChange < 0 ? Math.abs(pointsChange) : 0, balanceAfter: newBalance } })] : []),
+    db.user.update({ where: { id: user.id }, data: { points: newBalance, dollarBalance: newBalance / 1000 } }),
+    db.gameResult.create({ data: { userId: user.id, username: user.username, gameName, gameType, entryFee, result, pointsChange } }),
+    ...(pointsChange !== 0 ? [db.coinHistory.create({ data: { userId: user.id, activity: `Game: ${gameName} (${result})`, pointsEarned: pointsChange > 0 ? pointsChange : 0, pointsDeducted: pointsChange < 0 ? Math.abs(pointsChange) : 0, balanceAfter: newBalance } })] : []),
   ]);
 
   return NextResponse.json({ ok: true, user: { ...user, points: newBalance } });
