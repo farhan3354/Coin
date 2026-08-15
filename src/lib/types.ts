@@ -230,6 +230,7 @@ export interface AppSettings {
   roomDefaultReward: number;
   taskDefaultReward: number;
   videoDefaultReward: number;
+  tasksRequiredForRooms: number;
   withdrawalProcessingHours: string;
 }
 

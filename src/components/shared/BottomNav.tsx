@@ -14,6 +14,7 @@ import {
   Home as HomeIcon,
   User as UserIcon,
   Brain,
+  Shield,
 } from "lucide-react";
 import type { ViewKey } from "@/lib/types";
 
@@ -27,12 +28,18 @@ const bottomNavItems: { key: ViewKey; label: string; icon: typeof HomeIcon }[] =
   ];
 
 export function BottomNav() {
-  const { currentUserId } = useStore();
+  const { currentUserId, users } = useStore();
   const router = useRouter();
   const pathname = usePathname();
   const currentView = pathname.replace("/", "");
+  const currentUser = users.find((u) => u.id === currentUserId);
 
   if (!currentUserId) return null;
+
+  const items = [...bottomNavItems];
+  if (currentUser?.role === "admin") {
+    items.push({ key: "admin", label: "Admin", icon: Shield });
+  }
 
   return (
     <motion.nav
@@ -41,8 +48,8 @@ export function BottomNav() {
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t bg-card/95 backdrop-blur-md"
     >
-      <div className="flex items-center justify-around h-16">
-        {bottomNavItems.map((item) => {
+      <div className="flex items-center justify-around h-16 px-1">
+        {items.map((item) => {
           const isActive = currentView === item.key;
           return (
             <button
@@ -62,7 +69,7 @@ export function BottomNav() {
                 )}
               </motion.div>
               <span
-                className={`text-[10px] font-medium ${isActive ? "text-primary" : ""}`}
+                className={`text-[9px] sm:text-[10px] font-medium ${isActive ? "text-primary" : ""}`}
               >
                 {item.label}
               </span>

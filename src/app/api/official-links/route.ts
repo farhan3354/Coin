@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getUserFromRequest } from "@/lib/auth";
 
 export async function GET() {
   const links = await db.officialLink.findMany({ orderBy: { createdAt: "desc" } });

@@ -106,10 +106,13 @@ interface EarnState {
   deleteVideo: (id: string) => void;
   addTask: (t: Omit<Task, "id" | "createdAt" | "completed">) => void;
   deleteTask: (id: string) => void;
+  toggleTaskVisibility: (id: string) => void;
   addEvent: (e: Omit<EventItem, "id" | "createdAt" | "participants" | "leaderboard" | "winners">) => void;
   deleteEvent: (id: string) => void;
+  toggleEventVisibility: (id: string) => void;
   addRoom: (r: Omit<Room, "id" | "participants" | "leaderboard">) => void;
   deleteRoom: (id: string) => void;
+  toggleRoomVisibility: (id: string) => void;
   toggleUserStatus: (userId: string) => void;
 
   // quizzes
@@ -156,7 +159,7 @@ export const useStore = create<EarnState>()(
       videoWatches: [],
       gameResults: [],
       emailLogs: [],
-          quizzes: [],
+      quizzes: [],
       dbLoaded: false,
 
       currentUserId: null,
@@ -714,14 +717,7 @@ export const useStore = create<EarnState>()(
         set((s) => ({ settings: { ...s.settings, ...partial } }));
         // Sync to database
         const s = get().settings;
-        fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
-          welcomeBonus: s.welcomeBonus, referralReward: s.referralReward, pointsPerDollar: s.pointsPerDollar,
-          minWithdrawal: s.minWithdrawal, maxWithdrawal: s.maxWithdrawal,
-          withdrawalMethods: s.withdrawalMethods.join(","),
-          eventDefaultReward: s.eventDefaultReward, roomDefaultReward: s.roomDefaultReward,
-          taskDefaultReward: s.taskDefaultReward, videoDefaultReward: s.videoDefaultReward,
-          withdrawalProcessingHours: s.withdrawalProcessingHours,
-        }) }).catch(() => {});
+        fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(s) }).catch(() => {});
       },
 
       addVideo: (v) => {
@@ -785,6 +781,11 @@ export const useStore = create<EarnState>()(
         set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
         fetch(`/api/tasks?id=${id}`, { method: "DELETE" }).catch(() => {});
       },
+      toggleTaskVisibility: (id) => {
+        set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, hidden: !t.hidden } : t)) }));
+        const t = get().tasks.find(x => x.id === id);
+        if (t) fetch(`/api/tasks`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, hidden: t.hidden }) }).catch(() => {});
+      },
 
       addEvent: (e) =>
         set((s) => ({
@@ -805,6 +806,11 @@ export const useStore = create<EarnState>()(
         set((s) => ({ events: s.events.filter((e) => e.id !== id) }));
         fetch(`/api/events?id=${id}`, { method: "DELETE" }).catch(() => {});
       },
+      toggleEventVisibility: (id) => {
+        set((s) => ({ events: s.events.map((e) => (e.id === id ? { ...e, hidden: !e.hidden } : e)) }));
+        const e = get().events.find(x => x.id === id);
+        if (e) fetch(`/api/events`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, hidden: e.hidden }) }).catch(() => {});
+      },
 
       addRoom: (r) =>
         set((s) => ({
@@ -816,6 +822,11 @@ export const useStore = create<EarnState>()(
       deleteRoom: (id) => {
         set((s) => ({ rooms: s.rooms.filter((r) => r.id !== id) }));
         fetch(`/api/rooms?id=${id}`, { method: "DELETE" }).catch(() => {});
+      },
+      toggleRoomVisibility: (id) => {
+        set((s) => ({ rooms: s.rooms.map((r) => (r.id === id ? { ...r, hidden: !r.hidden } : r)) }));
+        const r = get().rooms.find(x => x.id === id);
+        if (r) fetch(`/api/rooms`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, hidden: r.hidden }) }).catch(() => {});
       },
 
       toggleUserStatus: (userId) =>

@@ -33,6 +33,7 @@ import {
   Gamepad2,
   Palette,
   Brain,
+  Shield,
 } from "lucide-react";
 import { formatPoints, formatUSD } from "@/lib/mockData";
 import type { ViewKey } from "@/lib/types";
@@ -145,14 +146,19 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <ScrollArea className="flex-1">
         <nav className="p-3 space-y-5">
           {(Object.keys(groupLabels) as NavItem["group"][]).map((group) => {
-            const items = navItems.filter((i) => i.group === group);
+            const items = [...navItems];
+            if (user.role === "admin" && !items.some(i => i.key === "admin")) {
+              items.push({ key: "admin", label: "Admin Panel", icon: Shield, group: "main" });
+            }
+            const groupItems = items.filter((i) => i.group === group);
+            if (groupItems.length === 0) return null;
             return (
               <div key={group}>
                 <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {groupLabels[group]}
                 </p>
                 <div className="space-y-0.5">
-                  {items.map((item) => {
+                  {groupItems.map((item) => {
                     const isActive = currentView === item.key;
                     const showBadge =
                       item.key === "notifications" && unread > 0;

@@ -28,3 +28,18 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ ok: false, message: 'Delete failed' }, { status: 500 });
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  const user = await getUserFromRequest(req);
+  if (!user || user.role !== 'admin') return NextResponse.json({ ok: false, message: 'Unauthorized' }, { status: 403 });
+  const url = new URL(req.url);
+  const id = url.searchParams.get('id');
+  if (!id) return NextResponse.json({ ok: false, message: 'Missing id' }, { status: 400 });
+  const body = await req.json();
+  try {
+    const updated = await db.event.update({ where: { id }, data: body });
+    return NextResponse.json({ ok: true, data: updated });
+  } catch (e) {
+    return NextResponse.json({ ok: false, message: 'Update failed' }, { status: 500 });
+  }
+}

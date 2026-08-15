@@ -143,6 +143,7 @@ export const defaultSettings: AppSettings = {
   roomDefaultReward: 300,
   taskDefaultReward: 25,
   videoDefaultReward: 10,
+  tasksRequiredForRooms: 5,
   withdrawalProcessingHours: "24-72 Hours",
 };
 

@@ -74,17 +74,20 @@ model Video {
 }
 
 model Task {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   title         String
   description   String
   type          String
-  rewardPoints  Int      @default(10)
-  durationMin   Int      @default(1)
-  link          String   @default("")
-  availability  Int      @default(1000)
-  completed     Int      @default(0)
-  status        String   @default("active")
-  createdAt     DateTime @default(now())
+  rewardPoints  Int       @default(10)
+  durationMin   Int       @default(1)
+  link          String    @default("")
+  availability  Int       @default(1000)
+  completed     Int       @default(0)
+  status        String    @default("active")
+  hidden        Boolean   @default(false)
+  startTime     DateTime?
+  endTime       DateTime?
+  createdAt     DateTime  @default(now())
 }
 
 model Event {
@@ -97,6 +100,7 @@ model Event {
   startTime     DateTime
   endTime       DateTime
   status        String   @default("upcoming")
+  hidden        Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   participants  EventParticipant[]
@@ -127,6 +131,7 @@ model Room {
   startTime     DateTime
   endTime       DateTime
   status        String   @default("open")
+  hidden        Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   participants  RoomParticipant[]
@@ -265,6 +270,7 @@ model Settings {
   roomDefaultReward         Int      @default(300)
   taskDefaultReward         Int      @default(25)
   videoDefaultReward        Int      @default(10)
+  tasksRequiredForRooms     Int      @default(5)
   withdrawalProcessingHours String   @default("24-72 Hours")
 }
 

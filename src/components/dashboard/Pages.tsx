@@ -447,6 +447,7 @@ export function TasksPage() {
   const filtered = tasks.filter((t) => {
     if (t.status !== "active") return false;
     if (filter !== "all" && t.type !== filter) return false;
+    if (t.status === "hidden") return false;
     if (!isScheduledVisible(t.startTime, t.endTime, t.hidden)) return false;
     return true;
   });
@@ -566,7 +567,7 @@ export function EventsPage() {
   const [tab, setTab] = useState("live");
 
   const filtered = events.filter((e) => {
-    if (e.hidden) return false;
+    if (e.hidden || e.status === "hidden") return false;
     if (!isScheduledVisible(e.startTime, e.endTime, e.hidden)) return false;
     if (tab === "all") return true;
     return e.status === tab;
@@ -771,7 +772,7 @@ export function RoomsPage() {
 
   const xpThresholds = [0, 500, 2000, 5000, 10000];
   const visibleRooms = rooms.filter(
-    (r) => !r.hidden && isScheduledVisible(r.startTime, r.endTime, r.hidden),
+    (r) => !r.hidden && r.status !== "hidden" && isScheduledVisible(r.startTime, r.endTime, r.hidden),
   );
   const userLevel = user?.roomLevel || 1;
   const userXP = user?.roomXP || 0;
