@@ -119,7 +119,7 @@ async function main() {
   });
 
   // Seed users for leaderboard
-  const seedUsers: any[] = [];
+  const seedUsers = [];
   for (let i = 0; i < 12; i++) {
     const u = await db.user.create({
       data: {

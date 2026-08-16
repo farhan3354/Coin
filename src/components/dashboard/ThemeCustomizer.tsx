@@ -130,7 +130,7 @@ export function ThemeCustomizer() {
                 whileTap={{ scale: 0.95 }}
                 onClick={() => applyAccent(c.value)}
                 className={`relative grid place-items-center w-12 h-12 rounded-full transition-all ${accentColor === c.value ? "ring-2 ring-offset-2 ring-offset-background" : ""}`}
-                style={{ backgroundColor: c.value, "--tw-ring-color": c.value } as any}
+                style={{ backgroundColor: c.value, ringColor: c.value }}
               >
                 {accentColor === c.value && <Check className="w-5 h-5 text-white" />}
               </motion.button>

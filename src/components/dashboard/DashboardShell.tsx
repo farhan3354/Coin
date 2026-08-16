@@ -3,37 +3,15 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore, useCurrentUser } from "@/lib/store";
-import { useRouter, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  LayoutDashboard,
-  Video,
-  ListChecks,
-  Trophy,
-  Crown,
-  Users,
-  Wallet,
-  History,
-  TrendingUp,
-  Bell,
-  User as UserIcon,
-  Menu,
-  Coins,
-  LogOut,
-  X,
-  Gamepad2,
-  Palette,
-  Brain,
-  Shield,
+  LayoutDashboard, Video, ListChecks, Trophy, Crown, Users, Wallet,
+  History, TrendingUp, Bell, User as UserIcon, Menu, Coins, LogOut,
+  X, Gamepad2, Palette, Brain
 } from "lucide-react";
 import { formatPoints, formatUSD } from "@/lib/mockData";
 import type { ViewKey } from "@/lib/types";
@@ -46,38 +24,19 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  {
-    key: "dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    group: "main",
-  },
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, group: "main" },
   { key: "videos", label: "Videos", icon: Video, group: "earning" },
-  { key: "quizzes", label: "Quizzes", icon: Brain, group: "earning" },
   { key: "tasks", label: "Tasks", icon: ListChecks, group: "earning" },
   { key: "events", label: "Events", icon: Trophy, group: "earning" },
   { key: "rooms", label: "Rooms", icon: Crown, group: "earning" },
   { key: "games", label: "Games", icon: Gamepad2, group: "earning" },
-  {
-    key: "leaderboard",
-    label: "Leaderboard",
-    icon: TrendingUp,
-    group: "earning",
-  },
+  { key: "quizzes", label: "Quizzes", icon: Brain, group: "earning" },
+  { key: "leaderboard", label: "Leaderboard", icon: TrendingUp, group: "earning" },
   { key: "referrals", label: "Referrals", icon: Users, group: "account" },
   { key: "withdrawals", label: "Withdrawals", icon: Wallet, group: "account" },
-  {
-    key: "coin-history",
-    label: "Coin History",
-    icon: History,
-    group: "account",
-  },
-  {
-    key: "notifications",
-    label: "Notifications",
-    icon: Bell,
-    group: "account",
-  },
+  { key: "buy-coins", label: "Buy Coins", icon: Coins, group: "account" },
+  { key: "coin-history", label: "Coin History", icon: History, group: "account" },
+  { key: "notifications", label: "Notifications", icon: Bell, group: "account" },
   { key: "profile", label: "Profile", icon: UserIcon, group: "account" },
   { key: "theme", label: "Theme", icon: Palette, group: "account" },
 ];
@@ -90,16 +49,11 @@ const groupLabels: Record<NavItem["group"], string> = {
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const user = useCurrentUser();
-  const { logout, notifications, currentUserId } = useStore();
-  const router = useRouter();
-  const pathname = usePathname();
-  const currentView = pathname.replace("/", "");
+  const { currentView, setView, logout, notifications, currentUserId } = useStore();
 
   if (!user) return null;
 
-  const unread = notifications.filter(
-    (n) => n.userId === currentUserId && !n.read,
-  ).length;
+  const unread = notifications.filter((n) => n.userId === currentUserId && !n.read).length;
 
   return (
     <div className="flex flex-col h-full">
@@ -107,37 +61,26 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="p-4 border-b">
         <div className="flex items-center gap-3">
           <Avatar className="w-10 h-10">
-            <AvatarFallback
-              style={{ backgroundColor: user.avatarColor, color: "white" }}
-              className="font-semibold"
-            >
+            <AvatarFallback style={{ backgroundColor: user.avatarColor, color: "white" }} className="font-semibold">
               {user.username.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-sm truncate">{user.fullName}</p>
-            <p className="text-xs text-muted-foreground truncate">
-              @{user.username}
-            </p>
+            <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 mt-3">
           <div className="rounded-md bg-muted/60 px-2.5 py-1.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-              Points
-            </p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Points</p>
             <p className="font-bold text-sm flex items-center gap-1">
               <Coins className="w-3 h-3 text-primary" />
               {formatPoints(user.points)}
             </p>
           </div>
           <div className="rounded-md bg-muted/60 px-2.5 py-1.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-              USD
-            </p>
-            <p className="font-bold text-sm text-green-600">
-              {formatUSD(user.dollarBalance)}
-            </p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">USD</p>
+            <p className="font-bold text-sm text-green-600">{formatUSD(user.dollarBalance)}</p>
           </div>
         </div>
       </div>
@@ -146,27 +89,21 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <ScrollArea className="flex-1">
         <nav className="p-3 space-y-5">
           {(Object.keys(groupLabels) as NavItem["group"][]).map((group) => {
-            const items = [...navItems];
-            if (user.role === "admin" && !items.some(i => i.key === "admin")) {
-              items.push({ key: "admin", label: "Admin Panel", icon: Shield, group: "main" });
-            }
-            const groupItems = items.filter((i) => i.group === group);
-            if (groupItems.length === 0) return null;
+            const items = navItems.filter((i) => i.group === group);
             return (
               <div key={group}>
                 <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {groupLabels[group]}
                 </p>
                 <div className="space-y-0.5">
-                  {groupItems.map((item) => {
+                  {items.map((item) => {
                     const isActive = currentView === item.key;
-                    const showBadge =
-                      item.key === "notifications" && unread > 0;
+                    const showBadge = item.key === "notifications" && unread > 0;
                     return (
                       <motion.button
                         key={item.key}
                         onClick={() => {
-                          router.push(`/${item.key}`);
+                          setView(item.key);
                           onNavigate?.();
                         }}
                         whileHover={{ x: 2 }}
@@ -178,23 +115,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                         }`}
                       >
                         <item.icon className="w-4 h-4 flex-shrink-0" />
-                        <span className="flex-1 text-left truncate">
-                          {item.label}
-                        </span>
+                        <span className="flex-1 text-left truncate">{item.label}</span>
                         {showBadge && (
                           <motion.span
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
-                            transition={{
-                              type: "spring",
-                              stiffness: 500,
-                              damping: 25,
-                            }}
+                            transition={{ type: "spring", stiffness: 500, damping: 25 }}
                           >
-                            <Badge
-                              variant="secondary"
-                              className={`h-5 min-w-[20px] px-1 text-[10px] flex items-center justify-center ${isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-destructive text-destructive-foreground"}`}
-                            >
+                            <Badge variant="secondary" className={`h-5 min-w-[20px] px-1 text-[10px] flex items-center justify-center ${isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-destructive text-destructive-foreground"}`}>
                               {unread > 9 ? "9+" : unread}
                             </Badge>
                           </motion.span>
@@ -203,11 +131,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                           <motion.div
                             layoutId="sidebar-active"
                             className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-foreground rounded-r-full"
-                            transition={{
-                              type: "spring",
-                              stiffness: 350,
-                              damping: 30,
-                            }}
+                            transition={{ type: "spring", stiffness: 350, damping: 30 }}
                           />
                         )}
                       </motion.button>
@@ -225,10 +149,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <Button
           variant="ghost"
           className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
-          onClick={() => {
-            logout();
-            onNavigate?.();
-          }}
+          onClick={() => { logout(); onNavigate?.(); }}
         >
           <LogOut className="w-4 h-4 mr-2" /> Logout
         </Button>
@@ -241,8 +162,34 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-6">
-      <div className="flex gap-4 lg:gap-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 w-full overflow-hidden">
+      {/* Mobile sidebar trigger — ABOVE content, full width */}
+      <div className="lg:hidden mb-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold">Dashboard</h2>
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Menu className="w-4 h-4 mr-2" /> Menu
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[280px] p-0">
+              <SheetTitle className="sr-only">Dashboard navigation</SheetTitle>
+              <div className="flex items-center justify-between p-3 border-b">
+                <span className="font-semibold text-sm">Menu</span>
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setMobileOpen(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="h-[calc(100vh-60px)]">
+                <SidebarContent onNavigate={() => setMobileOpen(false)} />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+
+      <div className="flex gap-6 w-full">
         {/* Desktop sidebar */}
         <motion.aside
           initial={{ opacity: 0, x: -20 }}
@@ -255,44 +202,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         </motion.aside>
 
-        {/* Mobile sidebar trigger */}
-        <div className="lg:hidden fixed bottom-4 right-4 z-30">
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button
-                  size="icon"
-                  className="w-12 h-12 rounded-full shadow-lg"
-                >
-                  <Menu className="w-5 h-5" />
-                </Button>
-              </motion.div>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-[280px] p-0">
-              <SheetTitle className="sr-only">Dashboard navigation</SheetTitle>
-              <div className="flex items-center justify-between p-3 border-b">
-                <span className="font-semibold text-sm">Menu</span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="h-[calc(100vh-60px)]">
-                <SidebarContent onNavigate={() => setMobileOpen(false)} />
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-
-        {/* Main content */}
-        <main className="flex-1 min-w-0">{children}</main>
+        {/* Main content — full width on mobile with bottom padding for BottomNav */}
+        <main className="flex-1 min-w-0 pb-20 lg:pb-0 overflow-hidden">{children}</main>
       </div>
     </div>
   );

@@ -102,7 +102,7 @@ export function BusinessDashboard() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8 space-y-4 sm:space-y-6 pb-20 lg:pb-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="grid place-items-center w-12 h-12 rounded-xl bg-primary text-primary-foreground">
@@ -121,7 +121,7 @@ export function BusinessDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <StatCard title="Total Budget" value={formatUSD(totalBudget)} subtitle={`${formatUSD(totalSpent)} spent`} icon={DollarSign} accent="bg-green-100 text-green-700" />
         <StatCard title="Total Views" value={formatPoints(totalViews)} subtitle="across all campaigns" icon={Eye} accent="bg-blue-100 text-blue-700" />
         <StatCard title="Total Clicks" value={formatPoints(totalClicks)} subtitle={`${ctr}% CTR`} icon={MousePointerClick} accent="bg-purple-100 text-purple-700" />

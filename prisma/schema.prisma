@@ -11,15 +11,21 @@ datasource db {
 model User {
   id                   String       @id @default(cuid())
   fullName             String
-  username             String       @unique
+  firstName            String?
+  lastName             String?
+  username             String
   email                String       @unique
+  phone                String?
   password             String
   country              String
   role                 String       @default("user")
   referralCode         String       @unique
   referredBy           String?
   points               Int          @default(0)
+  coins                Int          @default(0)
+  diamonds             Int          @default(0)
   dollarBalance        Float        @default(0)
+  hasFirstWithdrawal   Boolean      @default(false)
   emailVerified        Boolean      @default(false)
   deviceFingerprint    String
   browserInfo          String       @default("")
@@ -50,8 +56,7 @@ model User {
   eventParticipants    EventParticipant[]
   roomParticipants     RoomParticipant[]
   campaigns            BusinessCampaign[]
-  passwordResets       PasswordReset[]
-  emailVerifications   EmailVerification[]
+  quizAttempts         QuizAttempt[]
 }
 
 model Video {
@@ -74,20 +79,17 @@ model Video {
 }
 
 model Task {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   title         String
   description   String
   type          String
-  rewardPoints  Int       @default(10)
-  durationMin   Int       @default(1)
-  link          String    @default("")
-  availability  Int       @default(1000)
-  completed     Int       @default(0)
-  status        String    @default("active")
-  hidden        Boolean   @default(false)
-  startTime     DateTime?
-  endTime       DateTime?
-  createdAt     DateTime  @default(now())
+  rewardPoints  Int      @default(10)
+  durationMin   Int      @default(1)
+  link          String   @default("")
+  availability  Int      @default(1000)
+  completed     Int      @default(0)
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
 }
 
 model Event {
@@ -100,7 +102,6 @@ model Event {
   startTime     DateTime
   endTime       DateTime
   status        String   @default("upcoming")
-  hidden        Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   participants  EventParticipant[]
@@ -128,10 +129,11 @@ model Room {
   entryPoints   Int      @default(0)
   entryCost     Int      @default(0)
   rewardPoints  Int      @default(100)
+  tasksRequired Int      @default(0)
+  isHidden      Boolean  @default(false)
   startTime     DateTime
   endTime       DateTime
   status        String   @default("open")
-  hidden        Boolean  @default(false)
   createdAt     DateTime @default(now())
 
   participants  RoomParticipant[]
@@ -270,28 +272,48 @@ model Settings {
   roomDefaultReward         Int      @default(300)
   taskDefaultReward         Int      @default(25)
   videoDefaultReward        Int      @default(10)
-  tasksRequiredForRooms     Int      @default(5)
   withdrawalProcessingHours String   @default("24-72 Hours")
 }
 
-model PasswordReset {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
+model Quiz {
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  category      String   @default("")
+  rewardPoints  Int      @default(20)
+  passScore     Int      @default(60)
+  timeLimitMin  Int      @default(5)
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions     QuizQuestion[]
+  attempts      QuizAttempt[]
 }
 
-model EmailVerification {
-  id        String   @id @default(cuid())
-  userId    String
-  code      String
-  expiresAt DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
+model QuizQuestion {
+  id            String   @id @default(cuid())
+  quizId        String
+  question      String
+  options       String
+  correctIndex  Int
+  points        Int      @default(1)
+  createdAt     DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+model QuizAttempt {
+  id            String   @id @default(cuid())
+  userId        String
+  quizId        String
+  score         Int      @default(0)
+  totalPoints   Int      @default(0)
+  passed        Boolean  @default(false)
+  pointsEarned  Int      @default(0)
+  attemptedAt   DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, quizId])
 }

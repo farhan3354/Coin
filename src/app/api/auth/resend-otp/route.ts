@@ -1,69 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sendEmail, otpEmailTemplate, generateOTP } from "@/lib/email";
+import { sendEmail, generateOTP, otpEmailTemplate } from "@/lib/emailService";
 
 export async function POST(req: NextRequest) {
   const { email } = await req.json();
+
+  if (!email) {
+    return NextResponse.json({ ok: false, message: "Missing email" }, { status: 400 });
+  }
 
   const user = await db.user.findFirst({
     where: { email: { equals: email, mode: "insensitive" } },
   });
 
   if (!user) {
-    return NextResponse.json(
-      { ok: false, message: "No account found with this email" },
-      { status: 404 }
-    );
+    return NextResponse.json({ ok: false, message: "User not found" }, { status: 404 });
   }
 
   if (user.emailVerified) {
-    return NextResponse.json(
-      { ok: false, message: "Email is already verified" },
-      { status: 400 }
-    );
+    return NextResponse.json({ ok: false, message: "Email is already verified" }, { status: 400 });
   }
 
-  // Generate OTP
   const otp = generateOTP();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+  
+  let emailSent = false;
+  try {
+    const { subject, html } = otpEmailTemplate(user.fullName, otp);
+    emailSent = await sendEmail(user.email, subject, html);
+  } catch (e) {
+    console.error("Resend OTP email send error:", e);
+  }
 
-  // Invalidate old codes
-  await db.emailVerification.updateMany({
-    where: { userId: user.id, used: false },
-    data: { used: true },
-  });
-
-  // Save new OTP
-  await db.emailVerification.create({
-    data: {
-      userId: user.id,
-      code: otp,
-      expiresAt,
-    },
-  });
-
-  // Send email
-  const sent = await sendEmail({
-    to: user.email,
-    subject: "Verify Your EarnCoin Email",
-    html: otpEmailTemplate(user.fullName, otp),
-  });
-
-  // Log
   await db.emailLog.create({
     data: {
       to: user.email,
       toName: user.fullName,
-      subject: "Email Verification OTP",
-      body: `Verification OTP: ${otp}`,
-      type: "verification",
-      status: sent ? "sent" : "failed",
+      subject: `OTP: ${otp}`,
+      body: `OTP code: ${otp}`,
+      type: "otp",
+      status: emailSent ? "sent" : "failed",
     },
   });
 
-  return NextResponse.json({
-    ok: true,
-    message: sent ? "Verification code sent to your email" : "Failed to send email, please try again",
-    userId: user.id,
-  });
+  return NextResponse.json({ ok: true, message: "A new OTP has been sent to your email." });
 }

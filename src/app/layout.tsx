@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
-import ThemeProviderClient from "@/lib/theme";
-import { LayoutWrapper } from "@/components/layout/LayoutWrapper";
-import { Suspense } from "react";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "next-themes";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -11,7 +11,6 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
   title: "EarnCoin — Online Rewards, Video Promotion & Business Advertisement Platform",
   description:
     "EarnCoin lets you earn reward points by watching promotional videos, completing tasks, joining events, inviting friends, and participating in earning rooms. Businesses can promote products, brands, and social content.",
@@ -39,15 +38,13 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="overflow-x-hidden">
-      <body className={`${geistSans.variable} antialiased bg-background text-foreground overflow-x-hidden w-full relative`} suppressHydrationWarning>
-        <ThemeProviderClient>
-          <div className="min-h-screen flex flex-col bg-background">
-            <Suspense fallback={<main className="flex-1">{children}</main>}>
-              <LayoutWrapper>{children}</LayoutWrapper>
-            </Suspense>
-          </div>
-        </ThemeProviderClient>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} antialiased bg-background text-foreground`}>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          {children}
+          <Toaster />
+          <SonnerToaster />
+        </ThemeProvider>
       </body>
     </html>
   );

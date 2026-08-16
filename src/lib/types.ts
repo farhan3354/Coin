@@ -16,11 +16,11 @@ export type ViewKey =
   | "register"
   | "dashboard"
   | "videos"
-  | "quizzes"
   | "tasks"
   | "events"
   | "rooms"
   | "games"
+  | "quizzes"
   | "referrals"
   | "withdrawals"
   | "coin-history"
@@ -66,15 +66,6 @@ export interface User {
   officialLinkLabel?: string; // optional label for official link accounts
   isSuperStar?: boolean; // completed room tasks, eligible for diamond earning
   roomTasksCompleted?: number; // count of completed room tasks for super star tracking
-  emailSubscribed?: boolean;
-  notificationPreferences?: {
-    emailOnWithdrawal: boolean;
-    emailOnReferral: boolean;
-    emailOnEvent: boolean;
-    emailOnAnnouncement: boolean;
-    emailOnNewsletter: boolean;
-    browserNotifications: boolean;
-  };
 }
 
 export interface Video {
@@ -117,9 +108,6 @@ export interface Task {
   availability: number; // how many can complete
   completed: number;
   status: "active" | "inactive";
-  hidden?: boolean;
-  startTime?: string;
-  endTime?: string;
   createdAt: string;
 }
 
@@ -143,7 +131,6 @@ export interface EventItem {
   startTime: string;
   endTime: string;
   status: "upcoming" | "live" | "completed" | "expired";
-  hidden?: boolean;
   participants: string[]; // user ids
   leaderboard: { userId: string; username: string; score: number }[];
   winners: { userId: string; username: string; prize: number }[];
@@ -159,12 +146,13 @@ export interface Room {
   entryPoints: number; // minimum points to join
   entryCost: number; // points deducted on entry (0 = free)
   rewardPoints: number;
+  tasksRequired: number; // minimum tasks user must complete before joining
+  isHidden: boolean; // if true, room is hidden until user meets task requirement
   participants: string[];
   tasks: string[];
   leaderboard: { userId: string; username: string; score: number }[];
   startTime: string;
   endTime: string;
-  hidden?: boolean;
   status: "open" | "closed" | "completed";
 }
 
@@ -230,7 +218,6 @@ export interface AppSettings {
   roomDefaultReward: number;
   taskDefaultReward: number;
   videoDefaultReward: number;
-  tasksRequiredForRooms: number;
   withdrawalProcessingHours: string;
 }
 
@@ -303,4 +290,37 @@ export interface GameDef {
   reward: number; // win amount (typically 2x entry fee)
   icon: string;
   minLevel?: number;
+}
+
+export interface Quiz {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  rewardPoints: number;
+  passScore: number; // percentage 0-100
+  timeLimitMin: number;
+  status: "active" | "inactive";
+  questions: QuizQuestion[];
+  createdAt: string;
+}
+
+export interface QuizQuestion {
+  id: string;
+  quizId: string;
+  question: string;
+  options: string[]; // 4 options
+  correctIndex: number; // 0-3
+  points: number;
+}
+
+export interface QuizAttempt {
+  id: string;
+  userId: string;
+  quizId: string;
+  score: number; // points earned
+  totalPoints: number; // total possible points
+  passed: boolean;
+  pointsEarned: number; // reward points credited
+  attemptedAt: string;
 }

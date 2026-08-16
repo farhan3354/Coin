@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { sendEmail, welcomeEmailTemplate } from "@/lib/email";
+import { sendEmail, welcomeEmailTemplate } from "@/lib/emailService";
 
 export async function POST(req: NextRequest) {
-  const { userId, code } = await req.json();
+  const { userId, otp } = await req.json();
+  if (!userId) return NextResponse.json({ ok: false, message: "Missing userId" }, { status: 400 });
+
   const settings = await db.settings.findUnique({ where: { id: "singleton" } });
   const bonus = settings?.welcomeBonus ?? 150;
   const referralReward = settings?.referralReward ?? 90;
@@ -12,61 +14,48 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ ok: false, message: "User not found" }, { status: 404 });
   if (user.emailVerified) return NextResponse.json({ ok: true, user });
 
-  // Validate OTP code from database
-  const verification = await db.emailVerification.findFirst({
-    where: {
-      userId,
-      code,
-      used: false,
-      expiresAt: { gt: new Date() },
-    },
+  // Look up the most recent OTP log for this user
+  const otpLog = await db.emailLog.findFirst({
+    where: { to: user.email, type: "otp" },
+    orderBy: { sentAt: "desc" },
   });
 
-  if (!verification) {
-    return NextResponse.json(
-      { ok: false, message: "Invalid or expired verification code" },
-      { status: 400 }
-    );
+  if (!otpLog) {
+    return NextResponse.json({ ok: false, message: "No OTP was sent for this account. Please register again." }, { status: 400 });
   }
 
-  // Mark code as used
-  await db.emailVerification.update({
-    where: { id: verification.id },
-    data: { used: true },
-  });
+  // Extract OTP from subject (stored as "OTP: 123456")
+  const storedOTP = otpLog.subject.replace("OTP: ", "").trim();
+  if (!otp) {
+    return NextResponse.json({ ok: false, message: "Please enter the 6-digit OTP code sent to your email." }, { status: 400 });
+  }
+  if (storedOTP !== String(otp)) {
+    return NextResponse.json({ ok: false, message: "Invalid OTP code. Please check your email and try again." }, { status: 400 });
+  }
 
   const updated = await db.user.update({
     where: { id: userId },
     data: { emailVerified: true, points: { increment: bonus }, dollarBalance: bonus / (settings?.pointsPerDollar ?? 1000) },
   });
 
-  // Coin history entry
   await db.coinHistory.create({
     data: { userId, activity: "Welcome Bonus", pointsEarned: bonus, balanceAfter: updated.points, date: new Date() },
   });
 
-  // Notification
   await db.notification.create({
     data: { userId, title: "Welcome to EarnCoin!", message: `Your account is verified. ${bonus} welcome bonus points credited.`, type: "announcement" },
   });
 
-  // Send welcome email
-  await sendEmail({
-    to: user.email,
-    subject: "Welcome to EarnCoin! 🎉",
-    html: welcomeEmailTemplate(user.fullName, bonus),
-  });
-
-  await db.emailLog.create({
-    data: {
-      to: user.email,
-      toName: user.fullName,
-      subject: "Welcome to EarnCoin",
-      body: `Welcome email with ${bonus} bonus points`,
-      type: "welcome",
-      status: "sent",
-    },
-  });
+  // Send real welcome email (best-effort)
+  try {
+    const { subject, html } = welcomeEmailTemplate(user.fullName);
+    const sent = await sendEmail(user.email, subject, html);
+    await db.emailLog.create({
+      data: { to: user.email, toName: user.fullName, subject, body: html, type: "welcome", status: sent ? "sent" : "failed" },
+    });
+  } catch (e) {
+    console.error("Welcome email send error:", e);
+  }
 
   // Credit inviter
   if (user.referredBy) {

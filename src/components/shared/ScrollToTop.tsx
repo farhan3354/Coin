@@ -32,7 +32,7 @@ export function ScrollToTop() {
           whileTap={{ scale: 0.9 }}
           onClick={scrollToTop}
           aria-label="Scroll to top"
-          className="fixed bottom-6 right-6 z-40 grid place-items-center w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-shadow border-2 border-background"
+          className="fixed bottom-20 right-3 lg:bottom-6 lg:right-6 z-40 grid place-items-center w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-shadow border-2 border-background"
         >
           <motion.div
             animate={{ y: [0, -2, 0] }}

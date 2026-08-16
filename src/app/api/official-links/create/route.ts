@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getUserFromRequest } from "@/lib/auth";
 
 function genReferralCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
@@ -10,8 +9,6 @@ function genReferralCode(): string {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getUserFromRequest(req);
-  if (!user || (user.role !== "admin" && user.role !== "business")) return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 403 });
   const { label, username } = await req.json();
   const exists = await db.user.findFirst({ where: { username: { equals: username, mode: "insensitive" } } });
   if (exists) return NextResponse.json({ ok: false, message: "Username taken" }, { status: 409 });

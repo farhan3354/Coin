@@ -4,34 +4,8 @@ import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const EMPTY_STATS = {
-  users: [],
-  videos: [],
-  tasks: [],
-  events: [],
-  rooms: [],
-  withdrawals: [],
-  coinHistory: [],
-  notifications: [],
-  campaigns: [],
-  officialLinks: [],
-  gameResults: [],
-  emailLogs: [],
-  videoWatches: [],
-  settings: null,
-};
-
 export async function GET() {
   try {
-    const shouldUseDb = process.env.ENABLE_DB === "true" && !!process.env.DATABASE_URL;
-    if (!shouldUseDb) {
-      return NextResponse.json(
-        { ...EMPTY_STATS, _dbError: true, _errorMessage: "Database is disabled in this environment." },
-        { status: 200 }
-      );
-    }
-
-    // Run all queries in parallel with a timeout
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error("DB timeout")), 25000)
     );
@@ -51,6 +25,8 @@ export async function GET() {
       db.emailLog.findMany({ take: 200 }),
       db.videoWatch.findMany(),
       db.settings.findUnique({ where: { id: "singleton" } }),
+      db.quiz.findMany({ include: { questions: true } }),
+      db.quizAttempt.findMany(),
     ]);
 
     const data = await Promise.race([queryPromise, timeoutPromise]) as any[];
@@ -70,16 +46,11 @@ export async function GET() {
       emailLogs: data[11],
       videoWatches: data[12],
       settings: data[13],
+      quizzes: data[14],
+      quizAttempts: data[15],
     });
   } catch (error) {
     console.error("Stats API error:", error);
-
-    // Return empty fallback data instead of a 500 error
-    // so the dashboard still renders (just with no data)
-    return NextResponse.json(
-      { ...EMPTY_STATS, _dbError: true, _errorMessage: String(error) },
-      { status: 200 }
-    );
+    return NextResponse.json({ error: "Database query failed", details: String(error) }, { status: 500 });
   }
 }
-

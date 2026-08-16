@@ -56,8 +56,9 @@ interface EarnState {
   officialLinks: OfficialLink[];
   videoWatches: VideoWatch[];
   gameResults: GameResult[];
-  emailLogs: any[];
   quizzes: any[];
+  quizAttempts: any[];
+  emailLogs: any[];
   dbLoaded: boolean;
 
   // session
@@ -77,8 +78,12 @@ interface EarnState {
     password: string;
     country: string;
     referralCode?: string;
-  }) => { ok: boolean; message: string };
-  verifyOtp: (code: string) => { ok: boolean; message: string };
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+  }) => Promise<{ ok: boolean; message: string }>;
+  verifyOtp: (code: string) => Promise<{ ok: boolean; message: string }>;
+  resendOtp: () => Promise<{ ok: boolean; message: string }>;
   login: (email: string, password: string) => { ok: boolean; message: string };
   logout: () => void;
   forgotPassword: (email: string) => { ok: boolean; message: string };
@@ -106,19 +111,11 @@ interface EarnState {
   deleteVideo: (id: string) => void;
   addTask: (t: Omit<Task, "id" | "createdAt" | "completed">) => void;
   deleteTask: (id: string) => void;
-  toggleTaskVisibility: (id: string) => void;
   addEvent: (e: Omit<EventItem, "id" | "createdAt" | "participants" | "leaderboard" | "winners">) => void;
   deleteEvent: (id: string) => void;
-  toggleEventVisibility: (id: string) => void;
   addRoom: (r: Omit<Room, "id" | "participants" | "leaderboard">) => void;
   deleteRoom: (id: string) => void;
-  toggleRoomVisibility: (id: string) => void;
   toggleUserStatus: (userId: string) => void;
-
-  // quizzes
-  addQuiz: (q: any) => void;
-  deleteQuiz: (id: string) => void;
-  submitQuiz: (quizId: string, answers: number[]) => { ok: boolean; message: string };
 
   // Official links — admin generates referral links for partners/teams
   createOfficialLink: (label: string, username: string) => { ok: boolean; message: string; link?: OfficialLink };
@@ -126,6 +123,12 @@ interface EarnState {
 
   // Gaming system
   playGame: (gameName: GameName, gameType: GameType, entryFee: number, result: "win" | "loss" | "draw") => { ok: boolean; message: string };
+
+  // Quiz system
+  addQuiz: (q: { title: string; description: string; category: string; rewardPoints: number; passScore: number; timeLimitMin: number; questions: { question: string; options: string[]; correctIndex: number; points: number }[] }) => void;
+  deleteQuiz: (id: string) => void;
+  submitQuiz: (quizId: string, answers: { questionId: string; selectedIndex: number }[]) => Promise<{ ok: boolean; message: string; score?: number; totalPoints?: number; percentage?: number; passed?: boolean; pointsEarned?: number }>;
+  hasAttemptedQuiz: (userId: string, quizId: string) => boolean;
 
   // Email + notification preferences
   sendEmail: (toUserId: string, type: string, templateData: { [key: string]: string | number }) => void;
@@ -158,8 +161,9 @@ export const useStore = create<EarnState>()(
       officialLinks: [],
       videoWatches: [],
       gameResults: [],
-      emailLogs: [],
       quizzes: [],
+      quizAttempts: [],
+      emailLogs: [],
       dbLoaded: false,
 
       currentUserId: null,
@@ -175,26 +179,21 @@ export const useStore = create<EarnState>()(
       openAuth: (m) => set({ authModal: m }),
       closeAuth: () => set({ authModal: null, pendingEmail: null }),
 
-      register: ({ fullName, username, email, password, country, referralCode }) => {
+      register: async ({ fullName, username, email, password, country, referralCode, firstName, lastName, phone }) => {
         const state = get();
-        const exists = state.users.find(
-          (u) => u.email.toLowerCase() === email.toLowerCase() || u.username.toLowerCase() === username.toLowerCase()
-        );
-        if (exists) return { ok: false, message: "Email or username already in use" };
 
-        // Device fingerprint — one device = one account
-        const fp = genDeviceFingerprint();
-        const dupDevice = state.users.find((u) => u.deviceFingerprint === fp);
-        if (dupDevice) {
-          return {
-            ok: false,
-            message: "This device already has an account. One device can only create one account.",
-          };
-        }
+        // Light local check — only block on email collision (DB is the source of truth)
+        const exists = state.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+        if (exists) return { ok: false, message: "This email is already registered. Try logging in." };
 
-        const newUser: User = {
-          id: genId("u"),
-          fullName,
+        const fName = (firstName || "").trim();
+        const lName = (lastName || "").trim();
+        const actualFullName = `${fName} ${lName}`.trim() || fullName;
+
+        // Generate a placeholder local user — will be replaced with DB user ID after API succeeds
+        const tempUser: User = {
+          id: `local_${Date.now()}`,
+          fullName: actualFullName,
           username,
           email,
           password,
@@ -208,7 +207,7 @@ export const useStore = create<EarnState>()(
           dollarBalance: 0,
           hasFirstWithdrawal: false,
           emailVerified: false,
-          deviceFingerprint: fp,
+          deviceFingerprint: "pending",
           browserInfo: getBrowserInfo(),
           ipAddress: "0.0.0.0",
           createdAt: new Date().toISOString(),
@@ -221,84 +220,81 @@ export const useStore = create<EarnState>()(
           isSuperStar: false,
           roomTasksCompleted: 0,
         };
-        set({ users: [...state.users, newUser], pendingEmail: email, authModal: "otp" });
-        // Sync new user to database
-        fetch("/api/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fullName, username, email, password, country,
-            role: "user", referralCode: newUser.referralCode,
-            referredBy: referralCode || null,
-            deviceFingerprint: fp,
-            browserInfo: newUser.browserInfo,
-            ipAddress: newUser.ipAddress,
-          }),
-        }).catch(() => {});
-        return { ok: true, message: "Account created. Enter the OTP sent to your email." };
+
+        // Call API FIRST — this writes to DB and sends the real OTP email
+        try {
+          const res = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              firstName: fName,
+              lastName: lName,
+              email,
+              phone: phone || "",
+              password,
+              country,
+              referralCode: referralCode || null,
+            }),
+          });
+          const data = await res.json();
+          if (!data.ok) {
+            return { ok: false, message: data.message || "Registration failed. Please try again." };
+          }
+          // Use the DB-returned user ID + referral code so verifyOtp can find the user in DB
+          tempUser.id = data.userId;
+          if (data.referralCode) tempUser.referralCode = data.referralCode;
+        } catch (err) {
+          console.error("Register API error:", err);
+          return { ok: false, message: "Registration failed. Please check your connection and try again." };
+        }
+
+        // Add to local state only after DB write succeeded + OTP email sent
+        set({
+          users: [...state.users, tempUser],
+          pendingEmail: email,
+          authModal: "otp",
+        });
+
+        return { ok: true, message: "Account created. Check your email for the OTP code." };
       },
 
-      verifyOtp: (code) => {
+      verifyOtp: async (code) => {
         const state = get();
         const email = state.pendingEmail;
         if (!email) return { ok: false, message: "No pending registration" };
-        // demo: accept any 6-digit code
         if (!/^\d{6}$/.test(code)) return { ok: false, message: "OTP must be 6 digits" };
 
         const user = state.users.find((u) => u.email === email);
         if (!user) return { ok: false, message: "User not found" };
 
-        const bonus = state.settings.welcomeBonus;
-        const updatedUsers = state.users.map((u) =>
-          u.id === user.id ? { ...u, emailVerified: true, points: u.points + bonus } : u
-        );
-
-        // credit inviter
-        let finalUsers = updatedUsers;
-        const inviterCode = user.referredBy;
-        if (inviterCode) {
-          const inviter = updatedUsers.find((u) => u.referralCode === inviterCode);
-          if (inviter) {
-            const reward = state.settings.referralReward;
-            finalUsers = updatedUsers.map((u) =>
-              u.id === inviter.id
-                ? { ...u, points: u.points + reward, totalReferrals: u.totalReferrals + 1, activeReferrals: u.activeReferrals + 1 }
-                : u
-            );
-            // history for inviter
-            set({
-              coinHistory: [
-                {
-                  id: genId("ch"),
-                  userId: inviter.id,
-                  date: new Date().toISOString(),
-                  activity: `Referral Reward (${user.username} verified)`,
-                  pointsEarned: reward,
-                  pointsDeducted: 0,
-                  balanceAfter: inviter.points + reward,
-                  status: "completed",
-                },
-                ...state.coinHistory,
-              ],
-              notifications: [
-                {
-                  id: genId("n"),
-                  userId: inviter.id,
-                  title: "Referral Reward",
-                  message: `${user.username} joined using your code. +${reward} points!`,
-                  type: "referral",
-                  read: false,
-                  createdAt: new Date().toISOString(),
-                },
-                ...state.notifications,
-              ],
-            });
-          }
+        // Verify OTP via API — strict check, fails on wrong code
+        let dbUser: any = null;
+        try {
+          const res = await fetch("/api/auth/verify-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user.id, otp: code }),
+          });
+          const data = await res.json();
+          if (!data.ok) return { ok: false, message: data.message || "Verification failed" };
+          dbUser = data.user;
+        } catch (err) {
+          console.error("Verify OTP API error:", err);
+          return { ok: false, message: "Verification failed. Please try again." };
         }
 
-        // welcome bonus history
+        // Patch local user with DB-returned values (points, dollarBalance from DB)
+        const bonus = state.settings.welcomeBonus;
+        const finalPoints = dbUser?.points ?? user.points + bonus;
+        const finalDollar = dbUser?.dollarBalance ?? user.dollarBalance;
+        const updatedUsers = state.users.map((u) =>
+          u.id === user.id
+            ? { ...u, emailVerified: true, points: finalPoints, dollarBalance: finalDollar }
+            : u
+        );
+
         set({
-          users: finalUsers,
+          users: updatedUsers,
           coinHistory: [
             {
               id: genId("ch"),
@@ -307,10 +303,10 @@ export const useStore = create<EarnState>()(
               activity: "Welcome Bonus",
               pointsEarned: bonus,
               pointsDeducted: 0,
-              balanceAfter: bonus,
+              balanceAfter: finalPoints,
               status: "completed",
             },
-            ...get().coinHistory,
+            ...state.coinHistory,
           ],
           notifications: [
             {
@@ -322,20 +318,33 @@ export const useStore = create<EarnState>()(
               read: false,
               createdAt: new Date().toISOString(),
             },
-            ...get().notifications,
+            ...state.notifications,
           ],
           currentUserId: user.id,
           authModal: null,
           pendingEmail: null,
           currentView: "dashboard",
         });
-        // Sync verification to database
-        fetch("/api/auth/verify-otp", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user.id }),
-        }).catch(() => {});
         return { ok: true, message: "Verified! Welcome to EarnCoin." };
+      },
+
+      resendOtp: async () => {
+        const state = get();
+        const email = state.pendingEmail;
+        if (!email) return { ok: false, message: "No pending registration" };
+
+        try {
+          const res = await fetch("/api/auth/resend-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+          });
+          const data = await res.json();
+          return { ok: data.ok, message: data.message || (data.ok ? "OTP resent successfully" : "Failed to resend OTP") };
+        } catch (err) {
+          console.error("Resend OTP API error:", err);
+          return { ok: false, message: "Failed to resend OTP. Please try again." };
+        }
       },
 
       login: (email, password) => {
@@ -532,6 +541,18 @@ export const useStore = create<EarnState>()(
         // Check XP requirement
         if (user.roomXP < room.entryPoints)
           return { ok: false, message: `You need ${room.entryPoints} Room XP to enter this room.` };
+        // Check task completion requirement (new!)
+        if (room.tasksRequired > 0) {
+          const taskCount = state.coinHistory.filter(
+            (ch) => ch.userId === user.id && ch.activity.startsWith("Completed Task:")
+          ).length;
+          if (taskCount < room.tasksRequired) {
+            return {
+              ok: false,
+              message: `🔒 You need to complete ${room.tasksRequired} tasks to join this room. You have completed ${taskCount} so far. Complete ${room.tasksRequired - taskCount} more task(s) to unlock.`,
+            };
+          }
+        }
         if (room.participants.length >= room.seats) return { ok: false, message: "Room is full — all seats taken" };
         const costDeduct = room.entryCost;
         if (user.points < costDeduct) return { ok: false, message: "Not enough points for entry cost" };
@@ -641,15 +662,8 @@ export const useStore = create<EarnState>()(
               ]
             : state.notifications,
         });
-        // Sync to database — send auth cookie and update local store from server response
-        fetch("/api/tasks/complete", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ taskId }) })
-          .then((r) => r.json())
-          .then((data) => {
-            if (data && data.ok && data.user) {
-              set((s) => ({ users: s.users.map((u) => (u.id === data.user.id ? data.user : u)), tasks: s.tasks.map((t) => (t.id === taskId ? { ...t, completed: (t.completed || 0) + 1 } : t)) }));
-            }
-          })
-          .catch(() => {});
+        // Sync to database
+        fetch("/api/tasks/complete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.id, taskId }) }).catch(() => {});
         return { ok: true, message: leveledUp ? `+${task.rewardPoints} points! Room Level Up to ${newLevel}!` : `+${task.rewardPoints} points earned!` };
       },
 
@@ -679,15 +693,8 @@ export const useStore = create<EarnState>()(
             ...state.coinHistory,
           ],
         });
-        // Sync to database — send auth cookie and update local store from server response
-        fetch("/api/videos/watch", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ videoId }) })
-          .then((r) => r.json())
-          .then((data) => {
-            if (data && data.ok && data.user) {
-              set((s) => ({ users: s.users.map((u) => (u.id === data.user.id ? data.user : u)) }));
-            }
-          })
-          .catch(() => {});
+        // Sync to database
+        fetch("/api/videos/watch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.id, videoId }) }).catch(() => {});
         return { ok: true, message: `+${video.rewardPoints} points earned!` };
       },
 
@@ -717,75 +724,39 @@ export const useStore = create<EarnState>()(
         set((s) => ({ settings: { ...s.settings, ...partial } }));
         // Sync to database
         const s = get().settings;
-        fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(s) }).catch(() => {});
+        fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+          welcomeBonus: s.welcomeBonus, referralReward: s.referralReward, pointsPerDollar: s.pointsPerDollar,
+          minWithdrawal: s.minWithdrawal, maxWithdrawal: s.maxWithdrawal,
+          withdrawalMethods: s.withdrawalMethods.join(","),
+          eventDefaultReward: s.eventDefaultReward, roomDefaultReward: s.roomDefaultReward,
+          taskDefaultReward: s.taskDefaultReward, videoDefaultReward: s.videoDefaultReward,
+          withdrawalProcessingHours: s.withdrawalProcessingHours,
+        }) }).catch(() => {});
       },
 
-      addVideo: (v) => {
-        const tempId = genId("v");
-        const tempVideo = {
-          ...v,
-          id: tempId,
-          embedUrl: buildEmbedUrl(v.url, v.platform, false),
-          totalViews: 0,
-          createdAt: new Date().toISOString(),
-        } as any;
-        set((s) => ({ videos: [tempVideo, ...s.videos] }));
+      addVideo: (v) =>
+        set((s) => ({
+          videos: [
+            {
+              ...v,
+              id: genId("v"),
+              embedUrl: buildEmbedUrl(v.url, v.platform, false),
+              totalViews: 0,
+              createdAt: new Date().toISOString(),
+            },
+            ...s.videos,
+          ],
+        })),
+      deleteVideo: (id) => set((s) => ({ videos: s.videos.filter((v) => v.id !== id) })),
 
-        // Background sync to server — replace temp entry with server record on success
-        fetch("/api/videos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...v, embedUrl: tempVideo.embedUrl }),
-        })
-          .then((r) => r.json())
-          .then((created) => {
-            set((s) => ({ videos: s.videos.map((vid) => (vid.id === tempId ? created : vid)) }));
-          })
-          .catch(() => {
-            // keep temp entry if server unreachable
-          });
-      },
-      deleteVideo: (id) => {
-        set((s) => ({ videos: s.videos.filter((v) => v.id !== id) }));
-        fetch(`/api/videos?id=${id}`, { method: "DELETE" }).catch(() => {});
-      },
-
-      addTask: (t) => {
-        const tempId = genId("t");
-        const tempTask = {
-          ...t,
-          id: tempId,
-          completed: 0,
-          hidden: !!t.hidden,
-          startTime: t.startTime || undefined,
-          endTime: t.endTime || undefined,
-          createdAt: new Date().toISOString(),
-        } as any;
-        set((s) => ({ tasks: [tempTask, ...s.tasks] }));
-
-        // Background sync to server — replace temp entry with server record on success
-        fetch("/api/tasks", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(t),
-        })
-          .then((r) => r.json())
-          .then((created) => {
-            set((s) => ({ tasks: s.tasks.map((task) => (task.id === tempId ? created : task)) }));
-          })
-          .catch(() => {
-            // keep temp entry if server unreachable
-          });
-      },
-      deleteTask: (id) => {
-        set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
-        fetch(`/api/tasks?id=${id}`, { method: "DELETE" }).catch(() => {});
-      },
-      toggleTaskVisibility: (id) => {
-        set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, hidden: !t.hidden } : t)) }));
-        const t = get().tasks.find(x => x.id === id);
-        if (t) fetch(`/api/tasks`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, hidden: t.hidden }) }).catch(() => {});
-      },
+      addTask: (t) =>
+        set((s) => ({
+          tasks: [
+            { ...t, id: genId("t"), completed: 0, createdAt: new Date().toISOString() },
+            ...s.tasks,
+          ],
+        })),
+      deleteTask: (id) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
 
       addEvent: (e) =>
         set((s) => ({
@@ -793,7 +764,6 @@ export const useStore = create<EarnState>()(
             {
               ...e,
               id: genId("e"),
-              hidden: !!e.hidden,
               participants: [],
               leaderboard: [],
               winners: [],
@@ -802,31 +772,39 @@ export const useStore = create<EarnState>()(
             ...s.events,
           ],
         })),
-      deleteEvent: (id) => {
-        set((s) => ({ events: s.events.filter((e) => e.id !== id) }));
-        fetch(`/api/events?id=${id}`, { method: "DELETE" }).catch(() => {});
-      },
-      toggleEventVisibility: (id) => {
-        set((s) => ({ events: s.events.map((e) => (e.id === id ? { ...e, hidden: !e.hidden } : e)) }));
-        const e = get().events.find(x => x.id === id);
-        if (e) fetch(`/api/events`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, hidden: e.hidden }) }).catch(() => {});
-      },
+      deleteEvent: (id) => set((s) => ({ events: s.events.filter((e) => e.id !== id) })),
 
-      addRoom: (r) =>
-        set((s) => ({
-          rooms: [
-            { ...r, id: genId("r"), hidden: !!r.hidden, participants: [], leaderboard: [] },
-            ...s.rooms,
-          ],
-        })),
+      addRoom: (r) => {
+        const localRoom: Room = {
+          ...r,
+          tasksRequired: (r as any).tasksRequired || 0,
+          isHidden: (r as any).isHidden || false,
+          id: genId("r"),
+          participants: [],
+          leaderboard: [],
+        };
+        set((s) => ({ rooms: [localRoom, ...s.rooms] }));
+        fetch("/api/rooms", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: r.name, description: r.description, level: r.level, seats: r.seats,
+            entryPoints: r.entryPoints, entryCost: r.entryCost, rewardPoints: r.rewardPoints,
+            tasksRequired: (r as any).tasksRequired || 0, isHidden: (r as any).isHidden || false,
+            startTime: r.startTime, endTime: r.endTime, status: r.status || "open",
+          }),
+        })
+          .then((res) => res.json())
+          .then((dbRoom) => {
+            if (dbRoom?.id) {
+              set((s) => ({ rooms: s.rooms.map((rm) => (rm.id === localRoom.id ? { ...rm, id: dbRoom.id } : rm)) }));
+            }
+          })
+          .catch((err) => console.error("addRoom API error:", err));
+      },
       deleteRoom: (id) => {
         set((s) => ({ rooms: s.rooms.filter((r) => r.id !== id) }));
-        fetch(`/api/rooms?id=${id}`, { method: "DELETE" }).catch(() => {});
-      },
-      toggleRoomVisibility: (id) => {
-        set((s) => ({ rooms: s.rooms.map((r) => (r.id === id ? { ...r, hidden: !r.hidden } : r)) }));
-        const r = get().rooms.find(x => x.id === id);
-        if (r) fetch(`/api/rooms`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, hidden: r.hidden }) }).catch(() => {});
+        fetch("/api/rooms", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).catch((err) => console.error("deleteRoom API error:", err));
       },
 
       toggleUserStatus: (userId) =>
@@ -865,9 +843,6 @@ export const useStore = create<EarnState>()(
           role: "user",
           referralCode,
           referredBy: undefined, // NO referrer — this is an official root link
-          coins: 0,
-          diamonds: 0,
-          hasFirstWithdrawal: false,
           points: 0,
           dollarBalance: 0,
           emailVerified: true,
@@ -891,10 +866,8 @@ export const useStore = create<EarnState>()(
         return { ok: true, message: "Official link created", link };
       },
 
-      deleteOfficialLink: (id) => {
-        set((s) => ({ officialLinks: s.officialLinks.filter((l) => l.id !== id) }));
-        fetch(`/api/official-links?id=${id}`, { method: "DELETE" }).catch(() => {});
-      },
+      deleteOfficialLink: (id) =>
+        set((s) => ({ officialLinks: s.officialLinks.filter((l) => l.id !== id) })),
 
       // Gaming system — handles entry fee deduction and reward crediting
       playGame: (gameName, gameType, entryFee, result) => {
@@ -959,42 +932,104 @@ export const useStore = create<EarnState>()(
           return { ok: true, message: "Game completed!" };
         }
       },
-        // Quizzes
-        addQuiz: (q) => {
-          const tempId = genId("q");
-          const tempQuiz = { ...q, id: tempId, createdAt: new Date().toISOString() } as any;
-          set((s) => ({ quizzes: [tempQuiz, ...s.quizzes] }));
-          fetch("/api/quizzes", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(q) })
-            .then((r) => r.json())
-            .then((created) => {
-              if (created && created.id) set((s) => ({ quizzes: s.quizzes.map((qq) => (qq.id === tempId ? created : qq)) }));
-            })
-            .catch(() => {});
-        },
-        deleteQuiz: (id) => {
-          set((s) => ({ quizzes: s.quizzes.filter((q) => q.id !== id) }));
-          fetch(`/api/quizzes?id=${id}`, { method: "DELETE" }).catch(() => {});
-        },
-        submitQuiz: (quizId, answers) => {
-          const state = get();
-          const user = state.users.find((u) => u.id === state.currentUserId);
-          if (!user) return { ok: false, message: "Not logged in" };
-          // optimistic local attempt: post to server and apply response
-          fetch("/api/quizzes/submit", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quizId, answers }) })
-            .then((r) => r.json())
-            .then((data) => {
-              if (data && data.ok) {
-                if (data.user) {
-                  set((s) => ({ users: s.users.map((u) => (u.id === data.user.id ? data.user : u)) }));
-                } else if (data.awarded) {
-                  // fallback: award locally
-                  set((s) => ({ users: s.users.map((u) => (u.id === user.id ? { ...u, points: u.points + data.awarded, dollarBalance: (u.points + data.awarded) / s.settings.pointsPerDollar } : u)) }));
-                }
-              }
-            })
-            .catch(() => {});
-          return { ok: true, message: "Submitted. Processing..." };
-        },
+
+      // ===== Quiz system =====
+      addQuiz: (q) => {
+        const localQuiz = {
+          id: genId("qz"),
+          title: q.title,
+          description: q.description,
+          category: q.category || "",
+          rewardPoints: q.rewardPoints,
+          passScore: q.passScore,
+          timeLimitMin: q.timeLimitMin,
+          status: "active",
+          createdAt: new Date().toISOString(),
+          questions: q.questions.map((qq, i) => ({
+            id: `qq_${Date.now()}_${i}`,
+            quizId: "",
+            question: qq.question,
+            options: qq.options,
+            correctIndex: qq.correctIndex,
+            points: qq.points || 1,
+          })),
+        };
+        set((s) => ({ quizzes: [localQuiz, ...s.quizzes] }));
+        // Persist to DB
+        fetch("/api/quizzes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: q.title, description: q.description, category: q.category,
+            rewardPoints: q.rewardPoints, passScore: q.passScore, timeLimitMin: q.timeLimitMin,
+            questions: q.questions,
+          }),
+        })
+          .then((r) => r.json())
+          .then((dbQuiz) => {
+            if (dbQuiz?.ok && dbQuiz.quiz?.id) {
+              set((s) => ({
+                quizzes: s.quizzes.map((qq) => (qq.id === localQuiz.id ? { ...qq, id: dbQuiz.quiz.id, questions: qq.questions.map((qa: any) => ({ ...qa, quizId: dbQuiz.quiz.id })) } : qq)),
+              }));
+            }
+          })
+          .catch((e) => console.error("addQuiz API error:", e));
+      },
+      deleteQuiz: (id) => {
+        set((s) => ({ quizzes: s.quizzes.filter((q) => q.id !== id) }));
+        fetch("/api/quizzes", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).catch((e) => console.error("deleteQuiz API error:", e));
+      },
+      submitQuiz: async (quizId, answers) => {
+        const state = get();
+        const user = state.users.find((u) => u.id === state.currentUserId);
+        if (!user) return { ok: false, message: "Not logged in" };
+
+        // Check if already attempted
+        const already = state.quizAttempts.find((a: any) => a.userId === user.id && a.quizId === quizId);
+        if (already) return { ok: false, message: "You have already taken this quiz." };
+
+        // Call API to submit and grade
+        try {
+          const res = await fetch("/api/quizzes/submit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user.id, quizId, answers }),
+          });
+          const data = await res.json();
+          if (!data.ok) return { ok: false, message: data.message || "Submission failed" };
+
+          // Add attempt to local state
+          set((s) => ({
+            quizAttempts: [
+              { id: data.attempt?.id || genId("qa"), userId: user.id, quizId, score: data.score, totalPoints: data.totalPoints, passed: data.passed, pointsEarned: data.pointsEarned, attemptedAt: new Date().toISOString() },
+              ...s.quizAttempts,
+            ],
+          }));
+
+          // Update user's points locally
+          if (data.pointsEarned > 0) {
+            set((s) => ({
+              users: s.users.map((u) => (u.id === user.id ? { ...u, points: u.points + data.pointsEarned } : u)),
+              coinHistory: [
+                { id: genId("ch"), userId: user.id, date: new Date().toISOString(), activity: `Quiz: ${data.percentage}%`, pointsEarned: data.pointsEarned, pointsDeducted: 0, balanceAfter: user.points + data.pointsEarned, status: "completed" },
+                ...s.coinHistory,
+              ],
+              notifications: [
+                { id: genId("n"), userId: user.id, title: data.passed ? "Quiz Passed! 🎉" : "Quiz Completed", message: `You scored ${data.percentage}% and earned ${data.pointsEarned} points.`, type: "announcement", read: false, createdAt: new Date().toISOString() },
+                ...s.notifications,
+              ],
+            }));
+          }
+
+          return { ok: true, message: data.passed ? `Passed! +${data.pointsEarned} points` : `Scored ${data.percentage}%. +${data.pointsEarned} points`, score: data.score, totalPoints: data.totalPoints, percentage: data.percentage, passed: data.passed, pointsEarned: data.pointsEarned };
+        } catch (e) {
+          console.error("submitQuiz API error:", e);
+          return { ok: false, message: "Failed to submit quiz. Please try again." };
+        }
+      },
+      hasAttemptedQuiz: (userId, quizId) => {
+        return get().quizAttempts.some((a: any) => a.userId === userId && a.quizId === quizId);
+      },
 
       // Email system
       sendEmail: (toUserId, type, templateData) => {
@@ -1129,10 +1164,8 @@ export const useStore = create<EarnState>()(
     {
       name: "earncoin-session-v3",
       storage: createJSONStorage(() => (typeof window !== "undefined" ? localStorage : (undefined as unknown as Storage))),
-      // Persist currentUserId and the minimal current user object so UI stays logged-in
       partialize: (s) => ({
         currentUserId: s.currentUserId,
-        users: s.currentUserId ? s.users.filter((u) => u.id === s.currentUserId) : [],
       }),
     }
   )

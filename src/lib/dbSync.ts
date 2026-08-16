@@ -11,28 +11,21 @@ import { defaultSettings, buildEmbedUrl } from "./mockData";
 // Fetch all data from the database via API and load into the store
 export async function syncFromDatabase(): Promise<void> {
   try {
-    const res = await fetch("/api/stats", { cache: "no-store" });
+    const res = await fetch("/api/stats");
     if (!res.ok) return;
     const data = await res.json();
-
-    const quizRes = await fetch("/api/quizzes", { cache: "no-store" }).catch(() => null);
-    const quizzes = quizRes && quizRes.ok ? await quizRes.json() : [];
 
     // Transform DB records to app types
     const users: User[] = (data.users || []).map((u: any) => ({
       id: u.id, fullName: u.fullName, username: u.username, email: u.email,
       password: u.password, country: u.country, role: u.role,
       referralCode: u.referralCode, referredBy: u.referredBy || undefined,
-      points: u.points, coins: u.coins || 0, diamonds: u.diamonds || 0,
-      dollarBalance: u.dollarBalance, hasFirstWithdrawal: u.hasFirstWithdrawal || false,
-      emailVerified: u.emailVerified,
+      points: u.points, dollarBalance: u.dollarBalance, emailVerified: u.emailVerified,
       deviceFingerprint: u.deviceFingerprint, browserInfo: u.browserInfo,
       ipAddress: u.ipAddress, createdAt: u.createdAt, lastLogin: u.lastLogin || undefined,
       status: u.status, avatarColor: u.avatarColor,
       totalReferrals: u.totalReferrals, activeReferrals: u.activeReferrals,
       roomLevel: u.roomLevel, roomXP: u.roomXP,
-      isSuperStar: u.isSuperStar || false,
-      roomTasksCompleted: u.roomTasksCompleted || 0,
       isOfficialLink: u.isOfficialLink || false,
       officialLinkLabel: u.officialLinkLabel || undefined,
       notificationPreferences: {
@@ -73,6 +66,8 @@ export async function syncFromDatabase(): Promise<void> {
       id: r.id, name: r.name, description: r.description, level: r.level,
       seats: r.seats, entryPoints: r.entryPoints, entryCost: r.entryCost,
       rewardPoints: r.rewardPoints,
+      tasksRequired: r.tasksRequired || 0,
+      isHidden: r.isHidden || false,
       participants: (r.participants || []).map((p: any) => p.userId),
       tasks: [], leaderboard: [], startTime: r.startTime, endTime: r.endTime,
       status: r.status,
@@ -120,6 +115,24 @@ export async function syncFromDatabase(): Promise<void> {
       pointsChange: g.pointsChange, playedAt: g.playedAt,
     }));
 
+    const quizzes: any[] = (data.quizzes || []).map((q: any) => ({
+      id: q.id, title: q.title, description: q.description, category: q.category || "",
+      rewardPoints: q.rewardPoints, passScore: q.passScore, timeLimitMin: q.timeLimitMin,
+      status: q.status, createdAt: q.createdAt,
+      questionCount: (q.questions || []).length,
+      questions: (q.questions || []).map((qq: any) => ({
+        id: qq.id, quizId: qq.quizId, question: qq.question,
+        options: typeof qq.options === "string" ? JSON.parse(qq.options) : qq.options,
+        correctIndex: qq.correctIndex, points: qq.points,
+      })),
+    }));
+
+    const quizAttempts: any[] = (data.quizAttempts || []).map((a: any) => ({
+      id: a.id, userId: a.userId, quizId: a.quizId, score: a.score,
+      totalPoints: a.totalPoints, passed: a.passed, pointsEarned: a.pointsEarned,
+      attemptedAt: a.attemptedAt,
+    }));
+
     const s = data.settings;
     const settings: AppSettings = s ? {
       welcomeBonus: s.welcomeBonus, referralReward: s.referralReward,
@@ -135,7 +148,7 @@ export async function syncFromDatabase(): Promise<void> {
     useStore.setState({
       users, videos, tasks, events, rooms, withdrawals, coinHistory,
       notifications, campaigns, officialLinks, videoWatches, gameResults,
-      quizzes: Array.isArray(quizzes) ? quizzes : [],
+      quizzes, quizAttempts,
       settings, emailLogs: (data.emailLogs || []).map((e: any) => ({
         id: e.id, to: e.to, toName: e.toName, subject: e.subject,
         body: e.body, type: e.type, sentAt: e.sentAt, status: e.status,

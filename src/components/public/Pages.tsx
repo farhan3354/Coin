@@ -61,7 +61,7 @@ export function Home() {
           animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.4, 0.2] }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
         />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-24">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <motion.div
               initial="hidden"
@@ -75,7 +75,7 @@ export function Home() {
               </motion.div>
               <motion.h1
                 variants={fadeUp}
-                className="text-4xl lg:text-6xl font-bold tracking-tight"
+                className="text-3xl sm:text-4xl lg:text-6xl font-bold tracking-tight"
               >
                 Earn rewards by doing what you love online
               </motion.h1>
@@ -186,7 +186,7 @@ export function Home() {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, margin: "-50px" }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-6"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6"
           >
             {stats.map((s) => (
               <motion.div
@@ -224,7 +224,7 @@ export function Home() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, margin: "-50px" }}
-          className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6"
         >
           {features.map((f) => (
             <motion.div key={f.title} variants={staggerItem} whileHover={{ y: -6 }} transition={{ duration: 0.2 }}>
@@ -264,7 +264,7 @@ export function Home() {
             initial="hidden"
             whileInView="show"
             viewport={{ once: true, margin: "-50px" }}
-            className="grid md:grid-cols-3 gap-8"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8"
           >
             {steps.map((s) => (
               <motion.div key={s.num} variants={staggerItem} whileHover={{ y: -4 }} className="relative">
@@ -300,7 +300,7 @@ export function Home() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, margin: "-50px" }}
-          className="grid lg:grid-cols-3 gap-6"
+          className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6"
         >
           <motion.div variants={staggerItem} whileHover={{ y: -4 }}>
             <Card>
@@ -432,7 +432,7 @@ export function About() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <Badge variant="secondary" className="mb-4">About EarnCoin</Badge>
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight mb-6">Empowering online earners worldwide</h1>
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-6">Empowering online earners worldwide</h1>
         <p className="text-lg text-muted-foreground mb-8">
           EarnCoin was built on a simple idea — anyone with a phone or laptop should be able to earn real rewards
           from their time online, while businesses get a fair, transparent way to reach engaged audiences.
@@ -529,7 +529,7 @@ export function About() {
         initial="hidden"
         whileInView="show"
         viewport={{ once: true, margin: "-50px" }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4"
+        className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4"
       >
         {[
           { label: "Active users", value: "125K+" },
@@ -576,7 +576,7 @@ export function Features() {
         className="text-center max-w-2xl mx-auto mb-12"
       >
         <Badge variant="secondary" className="mb-3">Features</Badge>
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight mb-4">A complete rewards platform</h1>
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4">A complete rewards platform</h1>
         <p className="text-lg text-muted-foreground">Twelve core systems working together to make earning online simple, fair and secure.</p>
       </motion.div>
       <motion.div
@@ -626,7 +626,7 @@ export function HowItWorks() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
       <div className="text-center max-w-2xl mx-auto mb-12">
         <Badge variant="secondary" className="mb-3">How It Works</Badge>
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight mb-4">From signup to withdrawal in 8 steps</h1>
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4">From signup to withdrawal in 8 steps</h1>
         <p className="text-lg text-muted-foreground">A clear path from your first welcome bonus to your first cashout.</p>
       </div>
       <div className="space-y-6">
@@ -672,7 +672,7 @@ export function Advertise() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
       <div className="text-center max-w-2xl mx-auto mb-12">
         <Badge variant="secondary" className="mb-3">For Businesses</Badge>
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight mb-4">Advertise to 125K+ engaged users</h1>
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4">Advertise to 125K+ engaged users</h1>
         <p className="text-lg text-muted-foreground">Real engagement. Transparent reporting. Pay only for verified views, clicks and completions.</p>
         <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
           <Button size="lg" asChild>
@@ -701,7 +701,7 @@ export function Advertise() {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-6">
         {[
           { stat: "$0.05", label: "Avg. cost per verified view" },
           { stat: "98%", label: "Real-user engagement (no bots)" },
@@ -733,7 +733,7 @@ export function Contact() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
       <div className="text-center max-w-2xl mx-auto mb-12">
         <Badge variant="secondary" className="mb-3">Contact Us</Badge>
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight mb-4">Get in touch</h1>
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4">Get in touch</h1>
         <p className="text-lg text-muted-foreground">Questions, partnership ideas, or support — we typically reply within 24 hours.</p>
       </div>
       <div className="grid lg:grid-cols-3 gap-8">
@@ -780,7 +780,7 @@ export function Contact() {
               <Mail className="w-8 h-8 text-primary mb-2" />
               <h3 className="font-semibold mb-1">Email</h3>
               <p className="text-sm text-muted-foreground mb-3">For support tickets and inquiries.</p>
-              <a href="mailto:earncoinofficial804@gmail.com" className="text-sm text-primary hover:underline">earncoinofficial804@gmail.com</a>
+              <a href="mailto:support@earncoin.com" className="text-sm text-primary hover:underline">support@earncoin.com</a>
             </CardContent>
           </Card>
           <Card>
@@ -814,7 +814,7 @@ export function FAQ() {
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-20">
       <div className="text-center mb-12">
         <Badge variant="secondary" className="mb-3">FAQ</Badge>
-        <h1 className="text-4xl lg:text-5xl font-bold tracking-tight mb-4">Frequently asked questions</h1>
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4">Frequently asked questions</h1>
         <p className="text-lg text-muted-foreground">Everything you need to know about earning and withdrawing on EarnCoin.</p>
       </div>
       <Accordion type="single" collapsible className="space-y-3">
@@ -863,7 +863,7 @@ export function Terms() {
         </section>
         <section>
           <h2 className="text-xl font-semibold mb-2">7. Contact</h2>
-          <p className="text-muted-foreground">For questions about these terms, contact us at earncoinofficial804@gmail.com.</p>
+          <p className="text-muted-foreground">For questions about these terms, contact us at support@earncoin.com.</p>
         </section>
       </div>
     </div>
@@ -896,7 +896,7 @@ export function Privacy() {
         </section>
         <section>
           <h2 className="text-xl font-semibold mb-2">5. Your Rights</h2>
-          <p className="text-muted-foreground">You may request a copy of your data, request deletion of your account, or update your profile information at any time by contacting earncoinofficial804@gmail.com.</p>
+          <p className="text-muted-foreground">You may request a copy of your data, request deletion of your account, or update your profile information at any time by contacting support@earncoin.com.</p>
         </section>
         <section>
           <h2 className="text-xl font-semibold mb-2">6. Children&apos;s Privacy</h2>
