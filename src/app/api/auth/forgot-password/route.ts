@@ -15,7 +15,6 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user) {
-      // Don't reveal if user exists or not for security reasons, just return ok
       return NextResponse.json({ ok: true, message: "If an account exists, a reset code has been sent." });
     }
 
@@ -55,11 +54,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Return the OTP in dev mode for easy testing
+
     const isDev = process.env.NODE_ENV === "development";
 
-    return NextResponse.json({ 
-      ok: true, 
+    return NextResponse.json({
+      ok: true,
       message: "If an account exists, a reset code has been sent.",
       ...(isDev ? { devOtp: otp } : {})
     });
