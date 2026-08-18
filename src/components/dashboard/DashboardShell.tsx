@@ -70,17 +70,24 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-2 mt-3">
-          <div className="rounded-md bg-muted/60 px-2.5 py-1.5">
+        <div className="grid grid-cols-3 gap-2 mt-3">
+          <div className="rounded-md bg-muted/60 px-2 py-1.5 flex flex-col items-center justify-center">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Points</p>
             <p className="font-bold text-sm flex items-center gap-1">
               <Coins className="w-3 h-3 text-primary" />
               {formatPoints(user.points)}
             </p>
           </div>
-          <div className="rounded-md bg-muted/60 px-2.5 py-1.5">
+          <div className="rounded-md bg-muted/60 px-2 py-1.5 flex flex-col items-center justify-center">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">USD</p>
             <p className="font-bold text-sm text-green-600">{formatUSD(user.dollarBalance)}</p>
+          </div>
+          <div className="rounded-md bg-muted/60 px-2 py-1.5 flex flex-col items-center justify-center">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Referrals</p>
+            <p className="font-bold text-sm flex items-center gap-1">
+              <Users className="w-3 h-3 text-blue-500" />
+              {user.totalReferrals || 0}
+            </p>
           </div>
         </div>
       </div>

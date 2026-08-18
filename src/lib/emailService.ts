@@ -87,3 +87,24 @@ export function withdrawalEmailTemplate(name: string, amount: string, method: st
     `,
   };
 }
+
+export function passwordResetEmailTemplate(name: string, resetCode: string): { subject: string; html: string } {
+  return {
+    subject: `Password Reset Code: ${resetCode}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#0B0F19;color:#F0F0F0;padding:32px;border-radius:12px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <h1 style="color:#FF8C00;margin:0;font-size:28px;">EarnCoin</h1>
+        </div>
+        <h2 style="color:#FF8C00;">Reset your password</h2>
+        <p>Hi ${name}, you requested a password reset. Use the code below:</p>
+        <div style="text-align:center;margin:24px 0;">
+          <div style="display:inline-block;background:#1A1D24;border:2px solid #FF8C00;border-radius:8px;padding:16px 32px;font-size:32px;font-weight:bold;letter-spacing:8px;color:#FF8C00;">${resetCode}</div>
+        </div>
+        <p style="color:#BDBDBD;">This code expires in 15 minutes. If you didn't request this, you can safely ignore this email — your password will remain unchanged.</p>
+        <p style="color:#666;font-size:12px;margin-top:32px;border-top:1px solid #222;padding-top:16px;">© ${new Date().getFullYear()} EarnCoin. All rights reserved.</p>
+      </div>
+    `,
+  };
+}
+

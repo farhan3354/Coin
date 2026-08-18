@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { toast } from "sonner";
 import type {
   User,
   Video,
@@ -64,12 +65,12 @@ interface EarnState {
   // session
   currentUserId: string | null;
   currentView: ViewKey;
-  authModal: "login" | "register" | "forgot" | "otp" | null;
+  authModal: "login" | "register" | "forgot" | "otp" | "reset-password" | null;
   pendingEmail: string | null;
 
   // actions
   setView: (v: ViewKey) => void;
-  openAuth: (m: "login" | "register" | "forgot" | "otp") => void;
+  openAuth: (m: "login" | "register" | "forgot" | "otp" | "reset-password") => void;
   closeAuth: () => void;
   register: (input: {
     fullName: string;
@@ -86,7 +87,8 @@ interface EarnState {
   resendOtp: () => Promise<{ ok: boolean; message: string }>;
   login: (email: string, password: string) => { ok: boolean; message: string };
   logout: () => void;
-  forgotPassword: (email: string) => { ok: boolean; message: string };
+  forgotPassword: (email: string) => Promise<{ ok: boolean; message: string }>;
+  resetPassword: (email: string, code: string, newPassword: string) => Promise<{ ok: boolean; message: string }>;
 
   addPoints: (userId: string, points: number, activity: string) => void;
   requestWithdrawal: (input: {
@@ -222,6 +224,7 @@ export const useStore = create<EarnState>()(
         };
 
         // Call API FIRST — this writes to DB and sends the real OTP email
+        let data;
         try {
           const res = await fetch("/api/auth/register", {
             method: "POST",
@@ -236,7 +239,7 @@ export const useStore = create<EarnState>()(
               referralCode: referralCode || null,
             }),
           });
-          const data = await res.json();
+          data = await res.json();
           if (!data.ok) {
             return { ok: false, message: data.message || "Registration failed. Please try again." };
           }
@@ -249,6 +252,11 @@ export const useStore = create<EarnState>()(
         }
 
         // Add to local state only after DB write succeeded + OTP email sent
+        if (data?.devOtp && typeof window !== "undefined") {
+          console.log("DEV OTP:", data.devOtp);
+          toast("Dev OTP: " + data.devOtp, { duration: 10000 });
+        }
+
         set({
           users: [...state.users, tempUser],
           pendingEmail: email,
@@ -365,12 +373,55 @@ export const useStore = create<EarnState>()(
 
       logout: () => set({ currentUserId: null, currentView: "home" }),
 
-      forgotPassword: (email) => {
+      forgotPassword: async (email) => {
         const state = get();
         const user = state.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
         if (!user) return { ok: false, message: "No account found with this email" };
-        set({ authModal: "otp", pendingEmail: email });
+        
+        try {
+          const res = await fetch("/api/auth/forgot-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+          });
+          const data = await res.json();
+          if (!data.ok) return { ok: false, message: data.message };
+          
+          if (data.devOtp && typeof window !== "undefined") {
+            toast("Dev Reset OTP: " + data.devOtp, { duration: 10000 });
+          }
+        } catch (error) {
+          console.error("Forgot password API error:", error);
+          return { ok: false, message: "Failed to send reset email" };
+        }
+
+        set({ authModal: "reset-password" as any, pendingEmail: email });
         return { ok: true, message: "Reset OTP sent to your email" };
+      },
+
+      resetPassword: async (email, code, newPassword) => {
+        try {
+          const res = await fetch("/api/auth/reset-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, code, newPassword }),
+          });
+          const data = await res.json();
+          if (!data.ok) return { ok: false, message: data.message };
+
+          // Update local user's password if needed (though not strictly necessary as login works via API)
+          const state = get();
+          const user = state.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+          if (user) {
+            set({ users: state.users.map((u) => u.id === user.id ? { ...u, password: newPassword } : u) });
+          }
+
+          set({ authModal: "login", pendingEmail: null });
+          return { ok: true, message: "Password has been successfully reset. You can now login." };
+        } catch (error) {
+          console.error("Reset password API error:", error);
+          return { ok: false, message: "Failed to reset password" };
+        }
       },
 
       addPoints: (userId, points, activity) => {
@@ -734,29 +785,80 @@ export const useStore = create<EarnState>()(
         }) }).catch(() => {});
       },
 
-      addVideo: (v) =>
+      addVideo: (v) => {
+        const tempId = genId("v");
+        const embedUrl = buildEmbedUrl(v.url, v.platform, false);
         set((s) => ({
           videos: [
             {
               ...v,
-              id: genId("v"),
-              embedUrl: buildEmbedUrl(v.url, v.platform, false),
+              id: tempId,
+              embedUrl,
               totalViews: 0,
               createdAt: new Date().toISOString(),
             },
             ...s.videos,
           ],
-        })),
-      deleteVideo: (id) => set((s) => ({ videos: s.videos.filter((v) => v.id !== id) })),
+        }));
 
-      addTask: (t) =>
+        fetch("/api/videos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...v, embedUrl }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.ok && data.video) {
+              set((s) => ({
+                videos: s.videos.map((vid) => (vid.id === tempId ? { ...vid, id: data.video.id } : vid)),
+              }));
+            }
+          })
+          .catch((err) => console.error("addVideo API error:", err));
+      },
+
+      deleteVideo: (id) => {
+        set((s) => ({ videos: s.videos.filter((v) => v.id !== id) }));
+        fetch("/api/videos", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        }).catch((err) => console.error("deleteVideo API error:", err));
+      },
+
+      addTask: (t) => {
+        const tempId = genId("t");
         set((s) => ({
           tasks: [
-            { ...t, id: genId("t"), completed: 0, createdAt: new Date().toISOString() },
+            { ...t, id: tempId, completed: 0, createdAt: new Date().toISOString() },
             ...s.tasks,
           ],
-        })),
-      deleteTask: (id) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
+        }));
+
+        fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(t),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.ok && data.task) {
+              set((s) => ({
+                tasks: s.tasks.map((tsk) => (tsk.id === tempId ? { ...tsk, id: data.task.id } : tsk)),
+              }));
+            }
+          })
+          .catch((err) => console.error("addTask API error:", err));
+      },
+
+      deleteTask: (id) => {
+        set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
+        fetch("/api/tasks", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        }).catch((err) => console.error("deleteTask API error:", err));
+      },
 
       addEvent: (e) =>
         set((s) => ({

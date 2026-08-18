@@ -23,27 +23,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, message: "Missing required fields" }, { status: 400 });
   }
 
-  // Check email uniqueness (PostgreSQL supports mode: "insensitive" natively)
-  const existing = await db.user.findFirst({
-    where: { email: { equals: email, mode: "insensitive" } },
-  });
-  if (existing) {
-    return NextResponse.json({ ok: false, message: "This email is already registered. Try logging in." }, { status: 409 });
-  }
-
-  const fName = (firstName || "").trim();
-  const lName = (lastName || "").trim();
-  const fullName = `${fName} ${lName}`.trim() || "User";
-  // Generate a username just for storage — not unique. Append random suffix for traceability.
-  const username = `${(fName + lName).toLowerCase().replace(/[^a-z0-9]/g, "") || "user"}_${Math.random().toString(36).slice(2, 7)}`;
-  const fp = genDeviceFingerprint(ua);
-
-  const newReferralCode = genReferralCode();
-  const otp = generateOTP();
-
-  let user;
   try {
-    user = await db.user.create({
+    // Check email uniqueness
+    const existing = await db.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+    });
+    if (existing) {
+      return NextResponse.json({ ok: false, message: "This email is already registered. Try logging in." }, { status: 409 });
+    }
+
+    const fName = (firstName || "").trim();
+    const lName = (lastName || "").trim();
+    const fullName = `${fName} ${lName}`.trim() || "User";
+    const username = `${(fName + lName).toLowerCase().replace(/[^a-z0-9]/g, "") || "user"}_${Math.random().toString(36).slice(2, 7)}`;
+    const fp = genDeviceFingerprint(ua);
+
+    const newReferralCode = genReferralCode();
+    const otp = generateOTP();
+
+    const user = await db.user.create({
       data: {
         fullName,
         firstName: fName || null,
@@ -60,40 +58,48 @@ export async function POST(req: NextRequest) {
         ipAddress: req.headers.get("x-forwarded-for") || "0.0.0.0",
       },
     });
-  } catch (e: any) {
-    if (e?.code === "P2002") {
-      // Unique constraint violation (likely email race condition)
+
+    // Send real OTP email
+    let emailSent = false;
+    try {
+      const { subject, html } = otpEmailTemplate(fullName, otp);
+      emailSent = await sendEmail(email, subject, html);
+    } catch (e) {
+      console.error("OTP email send error:", e);
+    }
+
+    // Persist OTP in EmailLog so verify-otp can check it
+    await db.emailLog.create({
+      data: {
+        to: email,
+        toName: fullName,
+        subject: `OTP: ${otp}`,
+        body: `OTP code: ${otp}`,
+        type: "otp",
+        status: emailSent ? "sent" : "failed",
+      },
+    });
+
+    if (!emailSent) {
+      console.warn("OTP email failed to send, but OTP was logged.");
+    }
+
+    const isDev = process.env.NODE_ENV === "development";
+    return NextResponse.json({ 
+      ok: true, 
+      userId: user.id, 
+      email: user.email, 
+      referralCode: user.referralCode,
+      ...(isDev ? { devOtp: otp } : {})
+    });
+  } catch (error: any) {
+    if (error?.code === "P2002") {
       return NextResponse.json({ ok: false, message: "This email is already registered." }, { status: 409 });
     }
-    console.error("User create error:", e);
+    if (error?.code === "P1001") {
+      return NextResponse.json({ ok: false, message: "Database connection timeout. Please try again." }, { status: 503 });
+    }
+    console.error("Registration error:", error);
     return NextResponse.json({ ok: false, message: "Failed to create account. Please try again." }, { status: 500 });
   }
-
-  // Send real OTP email
-  let emailSent = false;
-  try {
-    const { subject, html } = otpEmailTemplate(fullName, otp);
-    emailSent = await sendEmail(email, subject, html);
-  } catch (e) {
-    console.error("OTP email send error:", e);
-  }
-
-  // Persist OTP in EmailLog so verify-otp can check it
-  await db.emailLog.create({
-    data: {
-      to: email,
-      toName: fullName,
-      subject: `OTP: ${otp}`,
-      body: `OTP code: ${otp}`,
-      type: "otp",
-      status: emailSent ? "sent" : "failed",
-    },
-  });
-
-  if (!emailSent) {
-    // Still return ok — user can retry. The OTP is in the EmailLog.
-    console.warn("OTP email failed to send, but OTP was logged.");
-  }
-
-  return NextResponse.json({ ok: true, userId: user.id, email: user.email, referralCode: user.referralCode });
 }

@@ -169,13 +169,23 @@ DIRECT_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/p
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 AUTH_SECRET="any-random-long-string"
 EMAIL_USER="your-gmail@gmail.com"
-EMAIL_PASS="your-16-char-gmail-app-password"
+# PostgreSQL database URL (e.g. Supabase, Neon)
+DATABASE_URL="postgresql://user:pass@host:5432/db"
+
+# Optional: Email setup for OTPs
+EMAIL_USER="your-email@gmail.com"
+EMAIL_PASS="your-app-password"
 ```
 
-Get a free Supabase database at https://supabase.com
-Get a Gmail App Password at https://myaccount.google.com/apppasswords
+## Deployment on Vercel
 
-## Support
+1. Push your code to a GitHub repository.
+2. Go to Vercel, import your repository.
+3. In the "Environment Variables" section, add `DATABASE_URL`, `EMAIL_USER`, and `EMAIL_PASS`.
+4. Vercel will automatically run `npm run build`. The `postinstall` script in `package.json` (`prisma generate`) will run automatically to generate the Prisma client.
+5. Click **Deploy**.
+
+## Contact & Support
 
 WhatsApp: +971 50 932 7341
 Email: support@earncoin.com

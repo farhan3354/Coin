@@ -7,7 +7,44 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const task = await db.task.create({ data: body });
-  return NextResponse.json(task);
+  try {
+    const body = await req.json();
+    const { title, description, type, rewardPoints, durationMin, link, availability, status } = body;
+
+    if (!title || !description || !type) {
+      return NextResponse.json({ ok: false, message: "Title, description, and type are required" }, { status: 400 });
+    }
+
+    const task = await db.task.create({
+      data: {
+        title,
+        description,
+        type,
+        rewardPoints: rewardPoints || 10,
+        durationMin: durationMin || 1,
+        link: link || "",
+        availability: availability || 1000,
+        status: status || "active",
+      },
+    });
+    return NextResponse.json({ ok: true, task });
+  } catch (error) {
+    console.error("Create task error:", error);
+    return NextResponse.json({ ok: false, message: "Failed to create task" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { id } = await req.json();
+    if (!id) {
+      return NextResponse.json({ ok: false, message: "Task ID is required" }, { status: 400 });
+    }
+
+    await db.task.delete({ where: { id } });
+    return NextResponse.json({ ok: true, message: "Task deleted" });
+  } catch (error) {
+    console.error("Delete task error:", error);
+    return NextResponse.json({ ok: false, message: "Failed to delete task" }, { status: 500 });
+  }
 }

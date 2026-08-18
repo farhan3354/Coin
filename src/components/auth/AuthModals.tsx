@@ -53,8 +53,11 @@ export function AuthModals() {
   // otp
   const [otp, setOtp] = useState("");
 
-  // forgot
+  // forgot & reset
   const [forgotEmail, setForgotEmail] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const { resetPassword } = useStore();
 
   // Reset error/otp whenever the modal target changes (use ref via key pattern)
   const [lastModal, setLastModal] = useState(authModal);
@@ -152,16 +155,34 @@ export function AuthModals() {
     }
   };
 
-  const handleForgot = (e: React.FormEvent) => {
+  const handleForgot = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    setTimeout(() => {
-      const r = forgotPassword(forgotEmail);
+    try {
+      const r = await forgotPassword(forgotEmail);
       setLoading(false);
       if (!r.ok) setError(r.message);
       else toast.success(r.message);
-    }, 300);
+    } catch (err: any) {
+      setLoading(false);
+      setError(err.message || "Failed to send reset email");
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      const r = await resetPassword(forgotEmail, resetCode, newPassword);
+      setLoading(false);
+      if (!r.ok) setError(r.message);
+      else toast.success(r.message);
+    } catch (err: any) {
+      setLoading(false);
+      setError(err.message || "Failed to reset password");
+    }
   };
 
   return (
@@ -346,6 +367,46 @@ export function AuthModals() {
             Remember your password?{" "}
             <button onClick={() => openAuth("login")} className="text-primary hover:underline font-medium">Login</button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password */}
+      <Dialog open={authModal === "reset-password"} onOpenChange={(o) => !o && closeAuth()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create new password</DialogTitle>
+            <DialogDescription>Enter the 6-digit code sent to your email and a new password.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleResetPassword} className="space-y-4">
+            {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+            
+            <div className="flex justify-center mb-4">
+              <InputOTP maxLength={6} value={resetCode} onChange={(v) => setResetCode(v)}>
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="newpwd">New Password</Label>
+              <div className="relative">
+                <Input id="newpwd" type={showPwd ? "text" : "password"} required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" />
+                <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            
+            <Button type="submit" className="w-full" disabled={loading || resetCode.length !== 6 || newPassword.length < 6}>
+              {loading ? "Resetting..." : "Reset Password"}
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
     </>

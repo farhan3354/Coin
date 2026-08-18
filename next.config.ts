@@ -12,3 +12,5 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+// Force restart to apply port 6543 for database connection pooling
