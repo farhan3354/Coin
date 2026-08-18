@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
       data: {
         to: user.email,
         toName: user.fullName,
-        subject: \`Password Reset Code: \${otp}\`,
-        body: \`Password Reset Code: \${otp}\`,
+        subject: `Password Reset Code: ${otp}`,
+        body: `Password Reset Code: ${otp}`,
         type: "forgot_password",
         status: emailSent ? "sent" : "failed",
       },
