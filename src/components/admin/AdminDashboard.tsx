@@ -20,7 +20,7 @@ import {
   Coins, Building2, Shield, Plus, Trash2, CheckCircle2, XCircle, Clock,
   TrendingUp, Globe, Smartphone, DollarSign, Activity, Eye, EyeOff,
   Ban, RotateCcw, AlertTriangle, Link2, Copy, Gamepad2, ExternalLink,
-  Menu, X, LogOut, LayoutDashboard, Cpu, Mail, Send, Inbox, Brain, ListChecks, Target, Lock
+  Menu, X, LogOut, LayoutDashboard, Cpu, Mail, Send, Inbox, Brain, ListChecks, Target, Lock, Edit
 } from "lucide-react";
 import { formatPoints, formatUSD, formatDate } from "@/lib/mockData";
 import { toast } from "sonner";
@@ -382,25 +382,46 @@ function AdminUsers() {
 }
 
 function AdminVideos() {
-  const { videos, addVideo, deleteVideo } = useStore();
+  const { videos, addVideo, deleteVideo, updateVideo } = useStore();
   const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "", description: "", url: "", platform: "youtube" as VideoPlatform,
     rewardPoints: 10, watchDurationSec: 10, category: "",
   });
 
+  const handleEdit = (v: typeof videos[0]) => {
+    setEditId(v.id);
+    setForm({
+      title: v.title, description: v.description, url: v.url,
+      platform: v.platform as VideoPlatform, rewardPoints: v.rewardPoints,
+      watchDurationSec: v.watchDurationSec, category: v.category,
+    });
+    setOpen(true);
+  };
+
+  const handleAdd = () => {
+    setEditId(null);
+    setForm({ title: "", description: "", url: "", platform: "youtube", rewardPoints: 10, watchDurationSec: 10, category: "" });
+    setOpen(true);
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    addVideo({ ...form, status: "active", addedBy: "admin", thumbnail: "" });
-    toast.success("Video added");
+    if (editId) {
+      updateVideo(editId, form);
+      toast.success("Video updated");
+    } else {
+      addVideo({ ...form, status: "active", addedBy: "admin", thumbnail: "" });
+      toast.success("Video added");
+    }
     setOpen(false);
-    setForm({ title: "", description: "", url: "", platform: "youtube", rewardPoints: 10, watchDurationSec: 10, category: "" });
   };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" /> Add Video</Button>
+        <Button onClick={handleAdd}><Plus className="w-4 h-4 mr-2" /> Add Video</Button>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {videos.map((v) => (
@@ -408,15 +429,20 @@ function AdminVideos() {
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <Badge variant="secondary" className="capitalize">{v.platform}</Badge>
-                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { deleteVideo(v.id); toast.success("Video deleted"); }}>
-                  <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleEdit(v)}>
+                    <Edit className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { deleteVideo(v.id); toast.success("Video deleted"); }}>
+                    <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                  </Button>
+                </div>
               </div>
               <h3 className="font-medium text-sm line-clamp-1">{v.title}</h3>
               <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{v.description}</p>
               <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
                 <Badge variant="outline">+{v.rewardPoints} pts</Badge>
-                <span>{v.totalViews} views</span>
+                <span>{v.watchDurationSec}s · {v.totalViews} views</span>
               </div>
             </CardContent>
           </Card>
@@ -426,7 +452,7 @@ function AdminVideos() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Video</DialogTitle>
+            <DialogTitle>{editId ? "Edit Video" : "Add New Video"}</DialogTitle>
             <DialogDescription>Paste a video URL. We&apos;ll embed it directly on EarnCoin.</DialogDescription>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-3">
@@ -451,7 +477,7 @@ function AdminVideos() {
               <div className="space-y-2"><Label htmlFor="vrew">Reward Points</Label><Input id="vrew" type="number" min={1} required value={form.rewardPoints} onChange={(e) => setForm({ ...form, rewardPoints: parseInt(e.target.value) || 0 })} /></div>
               <div className="space-y-2"><Label htmlFor="vdur">Watch Duration (sec)</Label><Input id="vdur" type="number" min={1} required value={form.watchDurationSec} onChange={(e) => setForm({ ...form, watchDurationSec: parseInt(e.target.value) || 0 })} /></div>
             </div>
-            <DialogFooter><Button type="submit">Add Video</Button></DialogFooter>
+            <DialogFooter><Button type="submit">{editId ? "Update Video" : "Add Video"}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -460,25 +486,45 @@ function AdminVideos() {
 }
 
 function AdminTasks() {
-  const { tasks, addTask, deleteTask } = useStore();
+  const { tasks, addTask, deleteTask, updateTask } = useStore();
   const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({
     title: "", description: "", type: "watch-video" as TaskType,
     rewardPoints: 10, durationMin: 1, link: "", availability: 1000,
   });
 
+  const handleEdit = (t: typeof tasks[0]) => {
+    setEditId(t.id);
+    setForm({
+      title: t.title, description: t.description, type: t.type,
+      rewardPoints: t.rewardPoints, durationMin: t.durationMin, link: t.link || "", availability: t.availability,
+    });
+    setOpen(true);
+  };
+
+  const handleAdd = () => {
+    setEditId(null);
+    setForm({ title: "", description: "", type: "watch-video", rewardPoints: 10, durationMin: 1, link: "", availability: 1000 });
+    setOpen(true);
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    addTask({ ...form, status: "active", link: form.link || "#" });
-    toast.success("Task added");
+    if (editId) {
+      updateTask(editId, { ...form, link: form.link || "#" });
+      toast.success("Task updated");
+    } else {
+      addTask({ ...form, status: "active", link: form.link || "#" });
+      toast.success("Task added");
+    }
     setOpen(false);
-    setForm({ title: "", description: "", type: "watch-video", rewardPoints: 10, durationMin: 1, link: "", availability: 1000 });
   };
 
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" /> Add Task</Button>
+        <Button onClick={handleAdd}><Plus className="w-4 h-4 mr-2" /> Add Task</Button>
       </div>
       <Card>
         <CardContent className="p-0">
@@ -497,12 +543,24 @@ function AdminTasks() {
               <tbody>
                 {tasks.map((t) => (
                   <tr key={t.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="p-3"><p className="font-medium">{t.title}</p><p className="text-xs text-muted-foreground line-clamp-1">{t.description}</p></td>
+                    <td className="p-3">
+                      <p className="font-medium">{t.title}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-1">{t.description}</p>
+                    </td>
                     <td className="p-3 hidden sm:table-cell"><Badge variant="outline" className="capitalize">{t.type.replace("-", " ")}</Badge></td>
                     <td className="p-3 text-right font-medium">+{t.rewardPoints}</td>
                     <td className="p-3 text-right hidden md:table-cell text-xs text-muted-foreground">{t.completed}/{t.availability}</td>
                     <td className="p-3 text-center"><Badge variant="secondary" className={t.status === "active" ? "bg-green-100 text-green-700" : ""}>{t.status}</Badge></td>
-                    <td className="p-3 text-center"><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { deleteTask(t.id); toast.success("Task deleted"); }}><Trash2 className="w-3.5 h-3.5 text-red-600" /></Button></td>
+                    <td className="p-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleEdit(t)}>
+                          <Edit className="w-3.5 h-3.5 text-blue-600" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { deleteTask(t.id); toast.success("Task deleted"); }}>
+                          <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                        </Button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -513,7 +571,7 @@ function AdminTasks() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Add New Task</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editId ? "Edit Task" : "Add New Task"}</DialogTitle></DialogHeader>
           <form onSubmit={submit} className="space-y-3">
             <div className="space-y-2"><Label htmlFor="ttitle">Title</Label><Input id="ttitle" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
             <div className="space-y-2"><Label htmlFor="tdesc">Description</Label><Textarea id="tdesc" required rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
@@ -523,7 +581,7 @@ function AdminTasks() {
                 <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as TaskType })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {["watch-video", "visit-website", "read-article", "complete-survey", "social-follow", "share-content", "join-telegram", "join-discord"].map((t) => (
+                    {["watch-video", "visit-website", "read-article", "complete-survey", "social-follow", "share-content", "join-telegram", "join-discord", "subscribe", "like", "follow", "comment", "share", "report"].map((t) => (
                       <SelectItem key={t} value={t} className="capitalize">{t.replace("-", " ")}</SelectItem>
                     ))}
                   </SelectContent>
@@ -531,12 +589,14 @@ function AdminTasks() {
               </div>
               <div className="space-y-2"><Label htmlFor="trew">Reward</Label><Input id="trew" type="number" min={1} required value={form.rewardPoints} onChange={(e) => setForm({ ...form, rewardPoints: parseInt(e.target.value) || 0 })} /></div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2"><Label htmlFor="tdur">Duration (min)</Label><Input id="tdur" type="number" min={1} required value={form.durationMin} onChange={(e) => setForm({ ...form, durationMin: parseInt(e.target.value) || 0 })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              {!["subscribe", "like", "follow", "comment", "share", "report"].includes(form.type) && (
+                <div className="space-y-2"><Label htmlFor="tdur">Duration (min)</Label><Input id="tdur" type="number" min={1} required value={form.durationMin || 1} onChange={(e) => setForm({ ...form, durationMin: parseInt(e.target.value) || 0 })} /></div>
+              )}
               <div className="space-y-2"><Label htmlFor="tav">Availability</Label><Input id="tav" type="number" min={1} required value={form.availability} onChange={(e) => setForm({ ...form, availability: parseInt(e.target.value) || 0 })} /></div>
-              <div className="space-y-2"><Label htmlFor="tlink">Link</Label><Input id="tlink" value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })} placeholder="Optional" /></div>
+              <div className="space-y-2 col-span-2"><Label htmlFor="tlink">{["subscribe", "like", "follow", "comment", "share", "report"].includes(form.type) ? "Profile / Content Link" : "Link"}</Label><Input id="tlink" required={["subscribe", "like", "follow", "comment", "share", "report"].includes(form.type)} value={form.link || ""} onChange={(e) => setForm({ ...form, link: e.target.value })} placeholder={["subscribe", "like", "follow", "comment", "share", "report"].includes(form.type) ? "e.g. https://youtube.com/channel/..." : "Optional"} /></div>
             </div>
-            <DialogFooter><Button type="submit">Add Task</Button></DialogFooter>
+            <DialogFooter><Button type="submit">{editId ? "Update Task" : "Add Task"}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -545,7 +605,7 @@ function AdminTasks() {
 }
 
 function AdminWithdrawals() {
-  const { withdrawals, updateWithdrawalStatus } = useStore();
+  const { withdrawals, updateWithdrawalStatus, users } = useStore();
   const [filter, setFilter] = useState("all");
   const filtered = withdrawals.filter((w) => filter === "all" || w.status === filter);
 
@@ -554,6 +614,14 @@ function AdminWithdrawals() {
     pending: "bg-amber-100 text-amber-700", "under-review": "bg-blue-100 text-blue-700",
     approved: "bg-green-100 text-green-700", completed: "bg-green-100 text-green-700",
     rejected: "bg-red-100 text-red-700", hold: "bg-purple-100 text-purple-700", cancelled: "bg-gray-200 text-gray-700",
+  };
+
+  const getUserReferralInfo = (userId: string) => {
+    const wUser = users.find(u => u.id === userId);
+    if (!wUser) return { count: 0, eligible: false };
+    const myRefs = users.filter((u) => u.referredBy === wUser.referralCode);
+    const count = Math.max(wUser.totalReferrals || 0, myRefs.length);
+    return { count, eligible: count >= 10 || !wUser.hasFirstWithdrawal };
   };
 
   return (
@@ -571,7 +639,7 @@ function AdminWithdrawals() {
             <table className="w-full text-sm">
               <thead className="border-b bg-muted/30">
                 <tr>
-                  <th className="text-left p-3 font-medium">User</th>
+                  <th className="text-left p-3 font-medium">User & Eligibility</th>
                   <th className="text-right p-3 font-medium">Amount</th>
                   <th className="text-left p-3 font-medium hidden sm:table-cell">Method</th>
                   <th className="text-left p-3 font-medium hidden md:table-cell">Account</th>
@@ -580,30 +648,39 @@ function AdminWithdrawals() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((w) => (
-                  <tr key={w.id} className="border-b last:border-0 hover:bg-muted/30">
-                    <td className="p-3">
-                      <p className="font-medium">@{w.username}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(w.requestedAt)}</p>
-                    </td>
-                    <td className="p-3 text-right"><p className="font-bold">{formatUSD(w.amountUSD)}</p><p className="text-xs text-muted-foreground">-{formatPoints(w.pointsUsed)} pts</p></td>
-                    <td className="p-3 hidden sm:table-cell capitalize">{w.method}</td>
-                    <td className="p-3 hidden md:table-cell text-xs text-muted-foreground font-mono truncate max-w-[150px]">{w.accountDetails}</td>
-                    <td className="p-3 text-center"><Badge className={`capitalize ${statusColors[w.status]}`}>{w.status.replace("-", " ")}</Badge></td>
-                    <td className="p-3">
-                      <div className="flex justify-center gap-1">
-                        {w.status !== "completed" && w.status !== "rejected" && w.status !== "cancelled" && (
-                          <>
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Approve" onClick={() => { updateWithdrawalStatus(w.id, "approved"); toast.success("Approved"); }}><CheckCircle2 className="w-4 h-4 text-green-600" /></Button>
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Complete" onClick={() => { updateWithdrawalStatus(w.id, "completed"); toast.success("Marked completed"); }}><CheckCircle2 className="w-4 h-4 text-blue-600" /></Button>
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Reject" onClick={() => { updateWithdrawalStatus(w.id, "rejected"); toast.success("Rejected & refunded"); }}><XCircle className="w-4 h-4 text-red-600" /></Button>
-                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Hold" onClick={() => { updateWithdrawalStatus(w.id, "hold"); toast.success("On hold"); }}><Clock className="w-4 h-4 text-purple-600" /></Button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((w) => {
+                  const refInfo = getUserReferralInfo(w.userId);
+                  return (
+                    <tr key={w.id} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="p-3">
+                        <p className="font-medium">@{w.username}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-[10px] text-muted-foreground">{formatDate(w.requestedAt)}</span>
+                          <span className="text-[10px] mx-1">•</span>
+                          <Badge variant="outline" className={`text-[9px] h-4 px-1 leading-none ${refInfo.eligible ? "text-green-600 bg-green-50 border-green-200" : "text-red-600 bg-red-50 border-red-200"}`}>
+                            {refInfo.count} Refs {refInfo.eligible ? "✓" : "✗"}
+                          </Badge>
+                        </div>
+                      </td>
+                      <td className="p-3 text-right"><p className="font-bold">{formatUSD(w.amountUSD)}</p><p className="text-xs text-muted-foreground">-{formatPoints(w.pointsUsed)} pts</p></td>
+                      <td className="p-3 hidden sm:table-cell capitalize">{w.method}</td>
+                      <td className="p-3 hidden md:table-cell text-xs text-muted-foreground font-mono truncate max-w-[150px]">{w.accountDetails}</td>
+                      <td className="p-3 text-center"><Badge className={`capitalize ${statusColors[w.status]}`}>{w.status.replace("-", " ")}</Badge></td>
+                      <td className="p-3">
+                        <div className="flex justify-center gap-1">
+                          {w.status !== "completed" && w.status !== "rejected" && w.status !== "cancelled" && (
+                            <>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Approve" onClick={() => { updateWithdrawalStatus(w.id, "approved"); toast.success("Approved"); }}><CheckCircle2 className="w-4 h-4 text-green-600" /></Button>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Complete" onClick={() => { updateWithdrawalStatus(w.id, "completed"); toast.success("Marked completed"); }}><CheckCircle2 className="w-4 h-4 text-blue-600" /></Button>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Reject" onClick={() => { updateWithdrawalStatus(w.id, "rejected"); toast.success("Rejected & refunded"); }}><XCircle className="w-4 h-4 text-red-600" /></Button>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" title="Hold" onClick={() => { updateWithdrawalStatus(w.id, "hold"); toast.success("On hold"); }}><Clock className="w-4 h-4 text-purple-600" /></Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

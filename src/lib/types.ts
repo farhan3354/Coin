@@ -103,7 +103,7 @@ export interface Task {
   description: string;
   type: TaskType;
   rewardPoints: number;
-  durationMin: number;
+  durationMin?: number;
   link?: string;
   availability: number; // how many can complete
   completed: number;
@@ -119,7 +119,13 @@ export type TaskType =
   | "social-follow"
   | "share-content"
   | "join-telegram"
-  | "join-discord";
+  | "join-discord"
+  | "subscribe"
+  | "like"
+  | "follow"
+  | "comment"
+  | "share"
+  | "report";
 
 export interface EventItem {
   id: string;
@@ -264,6 +270,16 @@ export interface VideoWatch {
   watchedAt: string;
   rewardPoints: number;
 }
+
+// Task completion tracking — one entry per user per task
+export interface TaskCompletion {
+  id: string;
+  userId: string;
+  taskId: string;
+  completedAt: string;
+  rewardPoints: number;
+}
+
 
 // Gaming system
 export type GameType = "free" | "coin";

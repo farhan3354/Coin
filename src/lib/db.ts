@@ -11,7 +11,7 @@ function createPrismaClient() {
   return new PrismaClient({
     datasources: {
       db: {
-        url: DATABASE_URL,
+        url: process.env.DATABASE_URL,
       },
     },
   });

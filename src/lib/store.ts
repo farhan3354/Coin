@@ -17,6 +17,7 @@ import type {
   ViewKey,
   OfficialLink,
   VideoWatch,
+  TaskCompletion,
   GameResult,
   GameName,
   GameType,
@@ -56,6 +57,7 @@ interface EarnState {
   settings: AppSettings;
   officialLinks: OfficialLink[];
   videoWatches: VideoWatch[];
+  taskCompletions: TaskCompletion[];
   gameResults: GameResult[];
   quizzes: any[];
   quizAttempts: any[];
@@ -100,6 +102,7 @@ interface EarnState {
   joinEvent: (eventId: string) => void;
   joinRoom: (roomId: string) => { ok: boolean; message: string };
   completeTask: (taskId: string) => { ok: boolean; message: string };
+  hasCompletedTask: (userId: string, taskId: string) => boolean;
   watchVideo: (videoId: string) => { ok: boolean; message: string };
   hasWatchedVideo: (userId: string, videoId: string) => boolean;
 
@@ -110,9 +113,12 @@ interface EarnState {
   // admin
   updateSettings: (s: Partial<AppSettings>) => void;
   addVideo: (v: Omit<Video, "id" | "createdAt" | "totalViews" | "embedUrl">) => void;
+  updateVideo: (v: Partial<Video> & { id: string }) => void;
   deleteVideo: (id: string) => void;
   addTask: (t: Omit<Task, "id" | "createdAt" | "completed">) => void;
+  updateTask: (t: Partial<Task> & { id: string }) => void;
   deleteTask: (id: string) => void;
+
   addEvent: (e: Omit<EventItem, "id" | "createdAt" | "participants" | "leaderboard" | "winners">) => void;
   deleteEvent: (id: string) => void;
   addRoom: (r: Omit<Room, "id" | "participants" | "leaderboard">) => void;
@@ -162,6 +168,7 @@ export const useStore = create<EarnState>()(
       settings: defaultSettings,
       officialLinks: [],
       videoWatches: [],
+      taskCompletions: [],
       gameResults: [],
       quizzes: [],
       quizAttempts: [],
@@ -453,12 +460,19 @@ export const useStore = create<EarnState>()(
         const state = get();
         const user = state.users.find((u) => u.id === state.currentUserId);
         if (!user) return { ok: false, message: "Not logged in" };
+
+        const userReferralsCount = state.users.filter((u) => u.referredBy === user.referralCode).length;
+        const totalReferrals = Math.max(user.totalReferrals || 0, userReferralsCount);
+        if (totalReferrals < 10)
+          return { ok: false, message: `You need at least 10 completed referrals to withdraw money. You currently have ${totalReferrals}/10 referrals.` };
+
         if (amountUSD < state.settings.minWithdrawal)
           return { ok: false, message: `Minimum withdrawal is $${state.settings.minWithdrawal}` };
         if (amountUSD > state.settings.maxWithdrawal)
           return { ok: false, message: `Maximum withdrawal is $${state.settings.maxWithdrawal}` };
         const pointsNeeded = Math.ceil(amountUSD * state.settings.pointsPerDollar);
         if (user.points < pointsNeeded) return { ok: false, message: "Not enough points" };
+
 
         const w: Withdrawal = {
           id: genId("w"),
@@ -661,6 +675,12 @@ export const useStore = create<EarnState>()(
         if (!task) return { ok: false, message: "Task not found" };
         if (task.completed >= task.availability) return { ok: false, message: "Task no longer available" };
 
+        // Prevent double-claiming — one reward per task per user
+        const alreadyDone = state.taskCompletions.some(
+          (tc) => tc.userId === user.id && tc.taskId === taskId
+        );
+        if (alreadyDone) return { ok: false, message: "You have already completed this task." };
+
         const newBalance = user.points + task.rewardPoints;
         // Award room XP for leveling up
         const xpGained = Math.floor(task.rewardPoints * 0.5);
@@ -685,6 +705,10 @@ export const useStore = create<EarnState>()(
             t.id === taskId ? { ...t, completed: t.completed + 1 } : t
           ),
           users: state.users.map((u) => (u.id === user.id ? updatedUser : u)),
+          taskCompletions: [
+            { id: genId("tc"), userId: user.id, taskId, completedAt: new Date().toISOString(), rewardPoints: task.rewardPoints },
+            ...state.taskCompletions,
+          ],
           coinHistory: [
             {
               id: genId("ch"),
@@ -717,6 +741,11 @@ export const useStore = create<EarnState>()(
         fetch("/api/tasks/complete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: user.id, taskId }) }).catch(() => {});
         return { ok: true, message: leveledUp ? `+${task.rewardPoints} points! Room Level Up to ${newLevel}!` : `+${task.rewardPoints} points earned!` };
       },
+
+      hasCompletedTask: (userId, taskId) => {
+        return get().taskCompletions.some((tc) => tc.userId === userId && tc.taskId === taskId);
+      },
+
 
       watchVideo: (videoId) => {
         const state = get();
@@ -817,6 +846,18 @@ export const useStore = create<EarnState>()(
           .catch((err) => console.error("addVideo API error:", err));
       },
 
+      updateVideo: (v) => {
+        const embedUrl = v.url && v.platform ? buildEmbedUrl(v.url, v.platform, false) : v.embedUrl;
+        set((s) => ({
+          videos: s.videos.map((vid) => (vid.id === v.id ? { ...vid, ...v, ...(embedUrl ? { embedUrl } : {}) } : vid)),
+        }));
+        fetch("/api/videos", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...v, ...(embedUrl ? { embedUrl } : {}) }),
+        }).catch((err) => console.error("updateVideo API error:", err));
+      },
+
       deleteVideo: (id) => {
         set((s) => ({ videos: s.videos.filter((v) => v.id !== id) }));
         fetch("/api/videos", {
@@ -849,6 +890,17 @@ export const useStore = create<EarnState>()(
             }
           })
           .catch((err) => console.error("addTask API error:", err));
+      },
+
+      updateTask: (t) => {
+        set((s) => ({
+          tasks: s.tasks.map((tsk) => (tsk.id === t.id ? { ...tsk, ...t } : tsk)),
+        }));
+        fetch("/api/tasks", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(t),
+        }).catch((err) => console.error("updateTask API error:", err));
       },
 
       deleteTask: (id) => {

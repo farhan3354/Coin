@@ -20,6 +20,7 @@ import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { BusinessDashboard } from "@/components/business/BusinessDashboard";
 import { VideoWatchPage } from "@/components/shared/VideoWatchPage";
+import { TaskWatchPage } from "@/components/shared/TaskWatchPage";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { BottomNav } from "@/components/shared/BottomNav";
 import { CustomerService } from "@/components/shared/CustomerService";
@@ -186,17 +187,23 @@ export default function Page() {
     };
   }, [dbLoaded, isMounted]);
 
-  // Check for ?watch=VIDEO_ID URL parameter (video opened in new tab) — lazy init
+  // Check for ?watch=VIDEO_ID or ?task=TASK_ID URL parameters — lazy init
   const [watchVideoId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     const params = new URLSearchParams(window.location.search);
     return params.get("watch");
   });
+  
+  const [watchTaskId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("task");
+  });
 
   // Handle referral code in URL on first load
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (watchVideoId) return; // Skip on watch page
+    if (watchVideoId || watchTaskId) return; // Skip on watch/task page
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("ref");
     if (ref) {
@@ -210,11 +217,16 @@ export default function Page() {
         setTimeout(() => openAuth("register"), 500);
       }
     }
-  }, [currentUserId, openAuth, watchVideoId]);
+  }, [currentUserId, openAuth, watchVideoId, watchTaskId]);
 
   // If this is a video watch page (new tab), render only the watch page — no navbar/footer
   if (isMounted && watchVideoId) {
     return <VideoWatchPage videoId={watchVideoId} />;
+  }
+
+  // If this is a task watch page (new tab), render only the task watch page
+  if (isMounted && watchTaskId) {
+    return <TaskWatchPage taskId={watchTaskId} />;
   }
 
   // Show loading screen while fetching from database or before mount to avoid hydration mismatch

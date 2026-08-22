@@ -37,6 +37,37 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, title, description, url, platform, rewardPoints, watchDurationSec, category, status, thumbnail, embedUrl } = body;
+
+    if (!id) {
+      return NextResponse.json({ ok: false, message: "Video ID is required" }, { status: 400 });
+    }
+
+    const video = await db.video.update({
+      where: { id },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(url !== undefined && { url }),
+        ...(platform !== undefined && { platform }),
+        ...(embedUrl !== undefined && { embedUrl }),
+        ...(thumbnail !== undefined && { thumbnail }),
+        ...(rewardPoints !== undefined && { rewardPoints: Number(rewardPoints) }),
+        ...(watchDurationSec !== undefined && { watchDurationSec: Number(watchDurationSec) }),
+        ...(category !== undefined && { category }),
+        ...(status !== undefined && { status }),
+      },
+    });
+    return NextResponse.json({ ok: true, video });
+  } catch (error) {
+    console.error("Update video error:", error);
+    return NextResponse.json({ ok: false, message: "Failed to update video" }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   try {
     const { id } = await req.json();
@@ -53,3 +84,4 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ ok: false, message: "Failed to delete video" }, { status: 500 });
   }
 }
+

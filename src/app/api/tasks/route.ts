@@ -34,6 +34,35 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, title, description, type, rewardPoints, durationMin, link, availability, status } = body;
+
+    if (!id) {
+      return NextResponse.json({ ok: false, message: "Task ID is required" }, { status: 400 });
+    }
+
+    const task = await db.task.update({
+      where: { id },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(description !== undefined && { description }),
+        ...(type !== undefined && { type }),
+        ...(rewardPoints !== undefined && { rewardPoints: Number(rewardPoints) }),
+        ...(durationMin !== undefined && { durationMin: Number(durationMin) }),
+        ...(link !== undefined && { link }),
+        ...(availability !== undefined && { availability: Number(availability) }),
+        ...(status !== undefined && { status }),
+      },
+    });
+    return NextResponse.json({ ok: true, task });
+  } catch (error) {
+    console.error("Update task error:", error);
+    return NextResponse.json({ ok: false, message: "Failed to update task" }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   try {
     const { id } = await req.json();
@@ -48,3 +77,4 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ ok: false, message: "Failed to delete task" }, { status: 500 });
   }
 }
+

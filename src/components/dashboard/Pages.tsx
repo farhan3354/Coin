@@ -34,6 +34,12 @@ const taskTypeLabels: Record<string, string> = {
   "share-content": "Share Content",
   "join-telegram": "Join Telegram",
   "join-discord": "Join Discord",
+  "subscribe": "Subscribe",
+  "like": "Like",
+  "follow": "Follow",
+  "comment": "Comment",
+  "share": "Share",
+  "report": "Report",
 };
 
 export function VideosPage() {
@@ -171,23 +177,116 @@ export function VideosPage() {
 }
 
 export function TasksPage() {
-  const { tasks, completeTask, currentUserId } = useStore();
+  const { tasks, completeTask, hasCompletedTask, currentUserId, openAuth } = useStore();
   const user = useCurrentUser();
   const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  
+  // Track active task timers: taskId -> { status: "verifying" | "ready"; secondsLeft: number }
+  const [activeTasks, setActiveTasks] = useState<Record<string, { status: "verifying" | "ready"; secondsLeft: number }>>({});
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveTasks((prev) => {
+        let hasChanges = false;
+        const next = { ...prev };
+        for (const [taskId, taskState] of Object.entries(next)) {
+          if (taskState.status === "verifying") {
+            if (taskState.secondsLeft <= 1) {
+              next[taskId] = { status: "ready", secondsLeft: 0 };
+              hasChanges = true;
+            } else {
+              next[taskId] = { status: "verifying", secondsLeft: taskState.secondsLeft - 1 };
+              hasChanges = true;
+            }
+          }
+        }
+        return hasChanges ? next : prev;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const types = ["all", ...Object.keys(taskTypeLabels)];
   const filtered = tasks.filter((t) => {
     if (t.status !== "active") return false;
     if (filter !== "all" && t.type !== filter) return false;
+    if (search && !t.title.toLowerCase().includes(search.toLowerCase()) && !t.description.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
+  const handleStartTask = (t: typeof tasks[0]) => {
+    if (!currentUserId) {
+      openAuth("login");
+      return;
+    }
+
+    // Open task verification page in a new tab if valid
+    if (t.link && t.link !== "#") {
+      if (typeof window !== "undefined") {
+        window.open(`${window.location.origin}/?task=${t.id}`, "_blank");
+      }
+    } else {
+      toast.info(`Please perform the task and wait for verification.`);
+      // Start 10-second verification countdown inline
+      setActiveTasks((prev) => ({
+        ...prev,
+        [t.id]: { status: "verifying", secondsLeft: 10 },
+      }));
+    }
+  };
+
+  const handleClaim = (taskId: string) => {
+    if (!currentUserId) {
+      openAuth("login");
+      return;
+    }
+    const r = completeTask(taskId);
+    if (r.ok) {
+      toast.success(r.message);
+      setActiveTasks((prev) => {
+        const next = { ...prev };
+        delete next[taskId];
+        return next;
+      });
+    } else {
+      toast.error(r.message);
+    }
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6 min-w-0">
       <div>
-        <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Tasks</h1>
-        <p className="text-muted-foreground mt-1">Complete tasks to earn points. Tasks are limited — first come, first served.</p>
+        <h1 className="text-xl sm:text-3xl font-bold tracking-tight">Earn by Tasks</h1>
+        <p className="text-muted-foreground mt-1">Open links, follow YouTube channels, like videos, join socials, and claim instant rewards.</p>
       </div>
+
+      <Card>
+        <CardContent className="p-4 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search tasks (e.g. YouTube, Telegram, Survey)..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={filter} onValueChange={setFilter}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              {types.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t === "all" ? "All Tasks" : taskTypeLabels[t]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
 
       <Tabs value={filter} onValueChange={setFilter}>
         <TabsList className="flex-wrap h-auto">
@@ -208,56 +307,81 @@ export function TasksPage() {
         {filtered.map((t) => {
           const remaining = t.availability - t.completed;
           const pct = (t.completed / t.availability) * 100;
+          const isDone = currentUserId ? hasCompletedTask(currentUserId, t.id) : false;
+          const taskState = activeTasks[t.id];
+
           return (
             <motion.div key={t.id} variants={staggerItem} whileHover={{ y: -4 }} transition={{ duration: 0.2 }}>
-            <Card className="flex flex-col h-full">
-              <CardContent className="p-5 flex-1 flex flex-col">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <Badge variant="secondary" className="text-xs">{taskTypeLabels[t.type]}</Badge>
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    <Coins className="w-3 h-3 text-primary" /> +{t.rewardPoints}
-                  </Badge>
-                </div>
-                <h3 className="font-semibold mb-1">{t.title}</h3>
-                <p className="text-sm text-muted-foreground mb-3 flex-1">{t.description}</p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span><Clock className="w-3 h-3 inline mr-1" />{t.durationMin} min</span>
-                    <span>{remaining} left</span>
+              <Card className={`flex flex-col h-full transition-all ${isDone ? "border-green-500/40 bg-green-500/5" : ""}`}>
+                <CardContent className="p-5 flex-1 flex flex-col">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <Badge variant={isDone ? "default" : "secondary"} className={`text-xs ${isDone ? "bg-green-600 hover:bg-green-600 text-white" : ""}`}>
+                      {isDone ? "Completed ✓" : taskTypeLabels[t.type] || t.type}
+                    </Badge>
+                    <Badge variant="outline" className="flex items-center gap-1 font-semibold text-primary">
+                      <Coins className="w-3.5 h-3.5 text-primary" /> +{t.rewardPoints} pts
+                    </Badge>
                   </div>
-                  <Progress value={pct} className="h-1.5" />
-                  <div className="flex gap-2 mt-2">
-                    {t.link && t.link !== "#" && (
-                      <Button size="sm" variant="outline" className="flex-1" asChild>
-                        <a href={t.link} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="w-3 h-3 mr-1" /> Open
-                        </a>
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      disabled={!currentUserId || remaining <= 0}
-                      onClick={() => {
-                        const r = completeTask(t.id);
-                        if (r.ok) toast.success(r.message);
-                        else toast.error(r.message);
-                      }}
-                    >
-                      <CheckCircle2 className="w-3 h-3 mr-1" /> Claim
-                    </Button>
+
+                  <h3 className="font-semibold mb-1 text-base">{t.title}</h3>
+                  <p className="text-sm text-muted-foreground mb-4 flex-1">{t.description}</p>
+
+                  <div className="space-y-3 mt-auto">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" /> ~{t.durationMin} min
+                      </span>
+                      <span>{remaining > 0 ? `${remaining} spots remaining` : "Full"}</span>
+                    </div>
+
+                    <Progress value={pct} className="h-1.5" />
+
+                    {/* Action buttons */}
+                    <div className="pt-2">
+                      {isDone ? (
+                        <Button size="sm" variant="outline" className="w-full text-green-700 bg-green-100/70 border-green-300 cursor-default" disabled>
+                          <CheckCircle2 className="w-4 h-4 mr-1.5 text-green-600" /> Reward Claimed ✓
+                        </Button>
+                      ) : !taskState ? (
+                        <Button
+                          size="sm"
+                          className="w-full font-medium"
+                          disabled={!currentUserId || remaining <= 0}
+                          onClick={() => handleStartTask(t)}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Start Task & Open Link
+                        </Button>
+                      ) : taskState.status === "verifying" ? (
+                        <Button size="sm" variant="secondary" className="w-full font-medium text-amber-700 bg-amber-100 hover:bg-amber-100 cursor-wait" disabled>
+                          <Clock className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Verifying Action ({taskState.secondsLeft}s)...
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="w-full bg-green-600 hover:bg-green-700 text-white font-bold animate-pulse"
+                          onClick={() => handleClaim(t.id)}
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-1.5" /> Verify & Claim +{t.rewardPoints} pts
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
             </motion.div>
           );
         })}
       </motion.div>
-      {filtered.length === 0 && <div className="text-center py-16 text-muted-foreground">No tasks in this category.</div>}
+
+      {filtered.length === 0 && (
+        <div className="text-center py-16 text-muted-foreground">
+          No tasks found matching your filter or search query.
+        </div>
+      )}
     </div>
   );
 }
+
 
 export function EventsPage() {
   const { events, joinEvent, currentUserId } = useStore();
@@ -596,12 +720,26 @@ export function RoomsPage() {
 export function ReferralsPage() {
   const user = useCurrentUser();
   const { users, coinHistory, settings } = useStore();
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+
   if (!user) return null;
 
   const myReferrals = users.filter((u) => u.referredBy === user.referralCode);
   const myReferralHistory = coinHistory.filter((h) => h.userId === user.id && h.activity.toLowerCase().includes("referral"));
   const referralLink = `${typeof window !== "undefined" ? window.location.origin : ""}/?ref=${user.referralCode}`;
   const earnings = myReferralHistory.reduce((s, h) => s + h.pointsEarned, 0);
+
+  const totalCount = Math.max(user.totalReferrals || 0, myReferrals.length);
+  const activeCount = Math.max(user.activeReferrals || 0, myReferrals.filter(r => r.emailVerified).length);
+  const pendingCount = Math.max(0, totalCount - activeCount);
+
+  const filteredReferrals = myReferrals.filter(r => {
+    if (filter === "active" && !r.emailVerified) return false;
+    if (filter === "pending" && r.emailVerified) return false;
+    if (search && !r.username.toLowerCase().includes(search.toLowerCase()) && !(r.email || "").toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
 
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -618,9 +756,9 @@ export function ReferralsPage() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card><CardContent className="p-5 text-center"><Users className="w-6 h-6 mx-auto text-primary mb-2" /><p className="text-2xl font-bold">{user.totalReferrals}</p><p className="text-xs text-muted-foreground">Total Referrals</p></CardContent></Card>
-        <Card><CardContent className="p-5 text-center"><CheckCircle2 className="w-6 h-6 mx-auto text-green-600 mb-2" /><p className="text-2xl font-bold text-green-600">{user.activeReferrals}</p><p className="text-xs text-muted-foreground">Active Referrals</p></CardContent></Card>
-        <Card><CardContent className="p-5 text-center"><Clock className="w-6 h-6 mx-auto text-amber-600 mb-2" /><p className="text-2xl font-bold text-amber-600">{user.totalReferrals - user.activeReferrals}</p><p className="text-xs text-muted-foreground">Pending Verification</p></CardContent></Card>
+        <Card><CardContent className="p-5 text-center"><Users className="w-6 h-6 mx-auto text-primary mb-2" /><p className="text-2xl font-bold">{totalCount}</p><p className="text-xs text-muted-foreground">Total Referrals</p></CardContent></Card>
+        <Card><CardContent className="p-5 text-center"><CheckCircle2 className="w-6 h-6 mx-auto text-green-600 mb-2" /><p className="text-2xl font-bold text-green-600">{activeCount}</p><p className="text-xs text-muted-foreground">Active Referrals</p></CardContent></Card>
+        <Card><CardContent className="p-5 text-center"><Clock className="w-6 h-6 mx-auto text-amber-600 mb-2" /><p className="text-2xl font-bold text-amber-600">{pendingCount}</p><p className="text-xs text-muted-foreground">Pending Verification</p></CardContent></Card>
         <Card><CardContent className="p-5 text-center"><Coins className="w-6 h-6 mx-auto text-primary mb-2" /><p className="text-2xl font-bold">{formatPoints(earnings)}</p><p className="text-xs text-muted-foreground">Referral Earnings</p></CardContent></Card>
       </div>
 
@@ -646,26 +784,61 @@ export function ReferralsPage() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <CardTitle>Your Referrals ({myReferrals.length})</CardTitle>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-48">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8 h-9 text-sm" />
+            </div>
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="w-[120px] h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           {myReferrals.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No referrals yet. Share your link to start earning!</p>
+          ) : filteredReferrals.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No referrals match your search.</p>
           ) : (
-            <div className="space-y-2">
-              {myReferrals.map((r) => (
-                <div key={r.id} className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="w-8 h-8"><AvatarFallback style={{ backgroundColor: r.avatarColor, color: "white" }} className="text-xs">{r.username.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+            <div className="space-y-3">
+              {filteredReferrals.map((r) => (
+                <div key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors gap-4">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="w-10 h-10 border shadow-sm">
+                      <AvatarFallback style={{ backgroundColor: r.avatarColor || "#4f46e5", color: "white" }} className="text-sm font-semibold">
+                        {r.username.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <div>
-                      <p className="font-medium text-sm">@{r.username}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(r.createdAt)}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-sm">{r.fullName || r.username}</p>
+                        <Badge variant={r.emailVerified ? "secondary" : "outline"} className={`text-[10px] h-5 ${r.emailVerified ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-amber-50 text-amber-600 hover:bg-amber-100"}`}>
+                          {r.emailVerified ? "Active" : "Pending OTP"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span className="truncate max-w-[120px] sm:max-w-none">{r.email || "No Email"}</span>
+                        <span>•</span>
+                        <span>{formatDate(r.createdAt)}</span>
+                        <span>•</span>
+                        <span>{r.country || "Global"}</span>
+                      </div>
                     </div>
                   </div>
-                  <Badge variant={r.emailVerified ? "secondary" : "outline"} className={r.emailVerified ? "bg-green-100 text-green-700" : ""}>
-                    {r.emailVerified ? "Active" : "Pending"}
-                  </Badge>
+                  <div className="text-right flex items-center justify-between sm:block">
+                    <p className="text-xs text-muted-foreground sm:mb-1">Reward</p>
+                    <p className={`text-sm font-bold flex items-center gap-1 ${r.emailVerified ? "text-green-600" : "text-muted-foreground opacity-50"}`}>
+                      <Coins className="w-3.5 h-3.5" />
+                      +{r.emailVerified ? settings.referralReward : "0"} pts
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -699,7 +872,7 @@ export function ReferralsPage() {
 
 export function WithdrawalsPage() {
   const user = useCurrentUser();
-  const { withdrawals, settings, requestWithdrawal, addPoints } = useStore();
+  const { withdrawals, users, settings, requestWithdrawal, addPoints } = useStore();
   const [method, setMethod] = useState<WithdrawalMethod>("paypal");
   const [diamondAmount, setDiamondAmount] = useState("");
   const [account, setAccount] = useState("");
@@ -707,6 +880,14 @@ export function WithdrawalsPage() {
 
   const mine = withdrawals.filter((w) => w.userId === user.id);
   const diamonds = user.diamonds || 0;
+  
+  // Enforce 10-referral requirement
+  const myReferrals = users.filter((u) => u.referredBy === user.referralCode);
+  const referralsCount = Math.max(user.totalReferrals || 0, myReferrals.length);
+  const requiredReferrals = 10;
+  const isReferralEligible = referralsCount >= requiredReferrals;
+  const referralPct = Math.min((referralsCount / requiredReferrals) * 100, 100);
+  
   const isFirstWithdrawal = !user.hasFirstWithdrawal;
   const MIN_DIAMONDS = 10; // minimum for non-first withdrawals
 
@@ -716,6 +897,10 @@ export function WithdrawalsPage() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isReferralEligible) {
+      return toast.error(`You need ${requiredReferrals} completed referrals to request a withdrawal.`);
+    }
+
     const dAmt = parseInt(diamondAmount || "0");
     if (!dAmt || dAmt <= 0) return toast.error("Enter a valid diamond amount");
     if (!account.trim()) return toast.error("Enter your account details");
@@ -753,16 +938,6 @@ export function WithdrawalsPage() {
     paypal: "PayPal", binance: "Binance", paytm: "Paytm", jazzcash: "JazzCash", easypaisa: "EasyPaisa",
   };
 
-  // Withdrawal tiers (diamonds → cash)
-  const withdrawalTiers = [
-    { diamonds: 2, cash: "Rs 1", usd: 0.01 },
-    { diamonds: 10, cash: "Rs 5", usd: 0.02 },
-    { diamonds: 50, cash: "Rs 25", usd: 0.10 },
-    { diamonds: 100, cash: "Rs 50", usd: 0.20 },
-    { diamonds: 500, cash: "Rs 250", usd: 1.00 },
-    { diamonds: 2000, cash: "Rs 1000", usd: 4.00 },
-  ];
-
   return (
     <div className="space-y-4 sm:space-y-6 min-w-0">
       <div>
@@ -795,6 +970,37 @@ export function WithdrawalsPage() {
         </div>
       </Card>
 
+      {/* Referral Eligibility Banner */}
+      <Card className={isReferralEligible ? "border-green-500/30 bg-green-500/5" : "border-amber-500/30 bg-amber-500/5"}>
+        <CardContent className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className={`grid place-items-center w-10 h-10 rounded-lg flex-shrink-0 ${isReferralEligible ? "bg-green-500/20 text-green-600" : "bg-amber-500/20 text-amber-600"}`}>
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <p className={`font-medium text-sm sm:text-base ${isReferralEligible ? "text-green-600" : "text-amber-700"}`}>
+                {isReferralEligible 
+                  ? "Referral Requirement Met ✓" 
+                  : `Referral Requirement: ${referralsCount}/${requiredReferrals} Completed`}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isReferralEligible 
+                  ? `You have ${referralsCount} referrals. You are eligible to withdraw.` 
+                  : `You need ${requiredReferrals - referralsCount} more referrals to unlock withdrawals.`}
+              </p>
+            </div>
+          </div>
+          {!isReferralEligible && (
+            <div className="w-full sm:w-auto flex flex-col gap-2 min-w-[140px]">
+              <Progress value={referralPct} className="h-2 w-full" />
+              <Button size="sm" onClick={() => useStore.getState().setView("referrals")} className="w-full">
+                Invite Friends
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* First withdrawal banner */}
       {isFirstWithdrawal && (
         <Card className="border-green-500/30 bg-green-500/5">
@@ -811,16 +1017,19 @@ export function WithdrawalsPage() {
       )}
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
+        <Card className={`lg:col-span-2 ${!isReferralEligible ? "opacity-70 pointer-events-none filter grayscale-[0.3]" : ""}`}>
           <CardHeader>
-            <CardTitle>Withdraw Diamonds</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              {!isReferralEligible && <Lock className="w-4 h-4 text-muted-foreground" />}
+              Withdraw Diamonds
+            </CardTitle>
             <CardDescription>Processing time: {settings.withdrawalProcessingHours}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="diamonds">Diamond Amount</Label>
-                <Input id="diamonds" type="number" min={isFirstWithdrawal ? 1 : MIN_DIAMONDS} required value={diamondAmount} onChange={(e) => setDiamondAmount(e.target.value)} placeholder={isFirstWithdrawal ? "Enter any amount" : `Minimum ${MIN_DIAMONDS} diamonds`} />
+                <Input id="diamonds" type="number" min={isFirstWithdrawal ? 1 : MIN_DIAMONDS} required value={diamondAmount} onChange={(e) => setDiamondAmount(e.target.value)} placeholder={isFirstWithdrawal ? "Enter any amount" : `Minimum ${MIN_DIAMONDS} diamonds`} disabled={!isReferralEligible} />
                 {diamondAmount && parseInt(diamondAmount) > 0 && (
                   <p className="text-xs text-muted-foreground">≈ Rs {diamondToPKR(parseInt(diamondAmount)).toFixed(2)} · ${diamondToUSD(parseInt(diamondAmount)).toFixed(4)}</p>
                 )}
@@ -834,6 +1043,7 @@ export function WithdrawalsPage() {
                       key={m}
                       type="button"
                       onClick={() => setMethod(m)}
+                      disabled={!isReferralEligible}
                       className={`p-3 rounded-md border text-xs font-medium transition-colors ${method === m ? "border-primary bg-primary/5 text-primary" : "hover:bg-muted"}`}
                     >
                       {methodLabels[m]}
@@ -844,11 +1054,11 @@ export function WithdrawalsPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="account">{methodLabels[method]} Account Details</Label>
-                <Input id="account" required value={account} onChange={(e) => setAccount(e.target.value)} placeholder={method === "paypal" ? "you@email.com" : method === "binance" ? "Binance ID" : "Phone number"} />
+                <Input id="account" required value={account} onChange={(e) => setAccount(e.target.value)} placeholder={method === "paypal" ? "you@email.com" : method === "binance" ? "Binance ID" : "Phone number"} disabled={!isReferralEligible} />
               </div>
 
-              <Button type="submit" className="w-full" disabled={!diamondAmount || !account}>
-                Request Withdrawal
+              <Button type="submit" className="w-full" disabled={!diamondAmount || !account || !isReferralEligible}>
+                {!isReferralEligible ? "Locked: 10 Referrals Required" : "Request Withdrawal"}
               </Button>
             </form>
           </CardContent>

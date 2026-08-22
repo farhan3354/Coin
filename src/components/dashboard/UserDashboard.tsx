@@ -19,7 +19,7 @@ import type { ViewKey } from "@/lib/types";
 
 export function UserDashboard() {
   const user = useCurrentUser();
-  const { setView, events, rooms, videos, tasks, coinHistory, notifications, settings } = useStore();
+  const { setView, events, rooms, videos, tasks, coinHistory, notifications, settings, users } = useStore();
 
   if (!user) return null;
 
@@ -148,6 +148,24 @@ export function UserDashboard() {
             <Button variant="outline" size="sm" className="w-full" onClick={() => goTo("referrals")}>
               View Full Referral Dashboard <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
             </Button>
+            {users.filter(u => u.referredBy === user.referralCode).length > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-xs font-semibold text-muted-foreground mb-3">Recent Referrals</p>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                  {users.filter(u => u.referredBy === user.referralCode).slice(-5).reverse().map(r => (
+                    <div key={r.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="w-6 h-6"><AvatarFallback style={{ backgroundColor: r.avatarColor || "#4f46e5", color: "white" }} className="text-[10px] font-semibold">{r.username.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
+                        <span className="font-medium truncate max-w-[100px] sm:max-w-[120px]">{r.username}</span>
+                      </div>
+                      <Badge variant={r.emailVerified ? "secondary" : "outline"} className={`text-[9px] h-4 px-1 leading-none ${r.emailVerified ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-amber-50 text-amber-600 hover:bg-amber-100"}`}>
+                        {r.emailVerified ? "Active" : "Pending"}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

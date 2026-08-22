@@ -6,26 +6,38 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Coins, Lock, CheckCircle2, ArrowLeft, ExternalLink, Clock, AlertCircle } from "lucide-react";
+import { Coins, Lock, CheckCircle2, ArrowLeft, ExternalLink, Clock, AlertCircle, Play } from "lucide-react";
 import { buildEmbedUrl, formatPoints } from "@/lib/mockData";
 import { toast } from "sonner";
 
 export function VideoWatchPage({ videoId }: { videoId: string }) {
-  const { videos, currentUserId, users, watchVideo, hasWatchedVideo, openAuth, setView } = useStore();
+  const { videos, currentUserId, users, watchVideo, hasWatchedVideo, openAuth, setView, dbLoaded } = useStore();
   const video = videos.find((v) => v.id === videoId);
   const user = users.find((u) => u.id === currentUserId) || null;
 
+  const [hasStarted, setHasStarted] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [claimed, setClaimed] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [loading, setLoading] = useState(true);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    // Show loading spinner until video data is available or store is loaded
+    if (!video && !dbLoaded) {
+      const t = setTimeout(() => setLoading(true), 200);
+      return () => clearTimeout(t);
+    }
+    setLoading(false);
+  }, [video, dbLoaded]);
 
   // Check if already watched
   const alreadyWatched = user ? hasWatchedVideo(user.id, videoId) : false;
 
-  // Start the timer automatically when component mounts (video auto-plays)
+  // Start the timer when the user clicks the start button
   useEffect(() => {
-    if (!video || claimed || alreadyWatched) return;
+    if (!video || claimed || alreadyWatched || !videoReady) return;
     timerRef.current = setInterval(() => {
       setElapsed((prev) => {
         if (prev + 1 >= video.watchDurationSec) {
@@ -38,11 +50,22 @@ export function VideoWatchPage({ videoId }: { videoId: string }) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [video, claimed, alreadyWatched]);
+  }, [video, claimed, alreadyWatched, videoReady]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen grid place-items-center p-4 bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-muted-foreground">Loading video...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!video) {
     return (
-      <div className="min-h-screen grid place-items-center p-4">
+      <div className="min-h-screen grid place-items-center p-4 bg-background">
         <Card className="max-w-md w-full">
           <CardContent className="p-8 text-center">
             <AlertCircle className="w-12 h-12 mx-auto text-destructive mb-4" />
@@ -122,28 +145,53 @@ export function VideoWatchPage({ videoId }: { videoId: string }) {
 
         {/* Video player — only this video plays */}
         <Card className="overflow-hidden mb-4">
-          <div className="aspect-video bg-black">
-            {video.platform === "youtube" || video.platform === "vimeo" || video.platform === "dailymotion" || video.platform === "facebook" ? (
-              <iframe
-                src={buildEmbedUrl(video.url, video.platform, true)}
-                title={video.title}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="w-full h-full"
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-white p-6 text-center gap-4">
-                <ExternalLink className="w-12 h-12 opacity-50" />
-                <p className="text-sm opacity-80 capitalize">
-                  {video.platform} video — click below to open in new tab, then return here to claim your reward.
-                </p>
-                <a href={video.url} target="_blank" rel="noopener noreferrer">
-                  <Button size="sm" variant="secondary">
-                    <ExternalLink className="w-4 h-4 mr-2" /> Open {video.platform} Video
+          <div className="aspect-video bg-black relative">
+            {!hasStarted && !isClaimed ? (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 text-white p-6 text-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-2">
+                    <Play className="w-8 h-8 text-primary ml-1" />
+                  </div>
+                  <h2 className="text-xl font-bold">Ready to watch?</h2>
+                  <p className="text-sm opacity-80">
+                    Click the button below to start the video.
+                  </p>
+                  <Button size="lg" className="mt-2" onClick={() => setHasStarted(true)}>
+                    Start Video
                   </Button>
-                </a>
-              </div>
-            )}
+                </div>
+              ) : null}
+              {/* Loading indicator while the iframe is initializing */}
+              {hasStarted && !videoReady && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 text-white p-4 text-center gap-2">
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                  <p className="text-sm">Preparing video, please wait...</p>
+                </div>
+              )}
+            
+            {hasStarted || isClaimed ? (
+              video.platform === "youtube" || video.platform === "vimeo" || video.platform === "dailymotion" || video.platform === "facebook" ? (
+                <iframe
+                    src={buildEmbedUrl(video.url, video.platform, true)}
+                    title={video.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full"
+                    onLoad={() => setVideoReady(true)}
+                  />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-white p-6 text-center gap-4">
+                    <ExternalLink className="w-12 h-12 opacity-50" />
+                    <p className="text-sm opacity-80 capitalize">
+                      {video.platform} video — click below to open in new tab, then return here to claim your reward.
+                    </p>
+                    <a href={video.url} target="_blank" rel="noopener noreferrer" onClick={() => setVideoReady(true)}>
+                      <Button size="sm" variant="secondary">
+                        <ExternalLink className="w-4 h-4 mr-2" /> Open {video.platform} Video
+                      </Button>
+                    </a>
+                  </div>
+              )
+            ) : null}
           </div>
         </Card>
 
@@ -185,6 +233,10 @@ export function VideoWatchPage({ videoId }: { videoId: string }) {
                 }}>
                   <ArrowLeft className="w-4 h-4 mr-2" /> Back to Videos
                 </Button>
+              </div>
+            ) : !hasStarted ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground">Click the "Start Video & Timer" button on the video player to begin.</p>
               </div>
             ) : (
               <div className="space-y-4">
